@@ -1,0 +1,343 @@
+.disabled{color:grey}.addparents,.addpartner,.delete,.popup_selection,.settings{cursor:pointer}.addchild,.addsibling{cursor:default}
+/* =========================================
+ * CONTROLS
+ */
+.view-controls {
+	position: absolute;
+	left: 10px;
+	top: 10px;
+	padding: 4px;
+	opacity: .8;
+	z-index: 50000;
+}
+.view-controls:hover {
+}
+.cursor-move {
+	cursor: move;
+}
+/* ----------------------------------------
+ * Pan
+ */
+.view-controls-pan {
+	width: 60px;
+	height: 60px;
+	left: 0;
+	top: 0;
+	position: absolute;
+	border: 1px solid #aaa;
+	background: #FFF;
+	border-radius: 30px;
+	box-shadow: 0 0 6px #AAAAAA;
+}
+.view-controls-pan * {
+	width: 16px;
+	height: 16px;
+	position: absolute;
+	cursor: pointer;
+	line-height: 16px;
+}
+.view-control-pan:hover, .view-controls-zoom .zoom-button:hover {
+	color: #0089DC;
+}
+.view-controls-pan .pan-up {
+	top: 4px;
+	left: 22px;
+}
+.view-controls-pan .pan-right {
+	top: 22px;
+	right: 4px;
+}
+.view-controls-pan .pan-down {
+	bottom: 4px;
+	left: 22px;
+}
+.view-controls-pan .pan-left {
+	top: 22px;
+	left: 4px;
+}
+.view-controls-pan .pan-home {
+	top: 22px;
+	left: 22px;
+	font-size: 12px;
+}
+/* ----------------------------------------
+ * Zoom
+ */
+.view-controls-zoom {
+	left: 18px;
+	top: 70px;
+	position: absolute;
+	text-align: center;
+}
+.view-controls-zoom * {
+	background: #FFF;
+	border: 1px solid #aaa;
+	border-radius: 4px;
+	box-shadow: 0 0 6px #AAAAAA;
+	margin: auto;
+}
+.view-controls-zoom .zoom-track {
+	width: 4px;
+	height: 100px;
+	position: relative;
+	cursor: pointer;
+}
+.view-controls-zoom .zoom-button {
+	cursor: pointer;
+	line-height: 16px;
+	width: 20px;
+	height: 20px;
+	padding: 2px 4px 4px 3px;
+}
+.view-controls-zoom .zoom-handle {
+	cursor: pointer;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 20px;
+	height: 10px;
+	margin-left: -9px;
+}
+.view-controls-zoom .zoom-crt-value {
+	background: transparent;
+	border: 0 none;
+	box-shadow: none;
+}
+
+/* ===========================================
+ * LEGEND
+ */
+#work-area {
+	position: relative;
+}
+.legend-info {
+	font-size: .8em;
+	padding-top: 14px;
+	padding-bottom: 5px;
+	margin-bottom: -9px;
+}
+.legend-hidden {
+	display:none !important;
+}
+.legend-minimized-title {
+	float: left;
+	padding-top: 3px;
+	padding-left: 10px;
+	font-size: 1.1em;
+}
+.legend-warning {
+	padding: 6px 10px 6px 30px;
+	color: #B08020;
+}
+
+.all-legend-container {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	z-index: 999;
+	max-width: 80%;
+}
+.abnormalities-legend span {
+	font-family: Arial,Verdana,sans-serif;
+}
+.abnormalities-legend {
+	margin-bottom: 10px;
+}
+.generic-legend {
+	min-width: 245px;
+	max-width: 270px;
+	width: 100%;
+	background: #FFF;
+}
+.patient-assign-legend {
+	float: right;
+}
+.legend-box {
+	background: #FFF;
+	border-radius: 0 0 0 4px;
+	padding: .5em .5em .5em 1em;
+}
+.legend-box-controls-open {
+	background: #F4F4F4;
+	height: 20px;
+	border-bottom: 1px solid;
+	border-color: #ccc;
+}
+.legend-box-controls-closed {
+	background: #FFF;
+	height: 25px;
+	cursor: pointer;
+}
+.legend-box-button-right {
+	float: right;
+	margin-top: 3px;
+	margin-right: 3px;
+	cursor: pointer;
+}
+.legend-box-button-left {
+	float: left;
+	margin-top: 3px;
+	margin-left: 8px;
+	cursor: pointer;
+}
+.legend-box-button:hover {
+	font-weight: bold;
+}
+.legend-hide-show-checkbox {
+	cursor: pointer;
+	float: right;
+	margin-bottom: 2px;
+	margin-top: 2px;
+}
+.legend-box .legend-title {
+	font-size: 1.1em;
+	margin: 0 0 0.3em;
+	cursor: default;
+}
+.abnormality {
+	cursor: pointer;
+	padding-left: 1px;
+}
+li.abnormality:hover, div.abnormality:hover {
+	background-color: #FBF5EA;
+}
+.abnormality.highlighted {
+	background-color: #FBF5EA;
+}
+.legend-box .abnormality-list {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+}
+.legend-box .close-button {
+	cursor: pointer;
+	float: right;
+	font-size: 13px;
+	font-weight: bold;
+	margin: 0.4em .3em 0 -1em;
+}
+.button-disabled {
+	color: #CCC !important;
+	cursor: default !important;
+}
+.legend-box .infomessage {
+	padding-right: 24px;
+}
+.abnormality-color {
+	display: inline-block;
+	width: .9em;
+	height: .9em;
+	margin: 0 .5em .2em 0;
+	border-radius: .6em;
+	background-color: #DDD;
+	vertical-align: middle;
+}
+.abnormality-legend-icon {
+	font-size: 16px;
+	margin-right: 7px;
+	vertical-align: middle;
+}
+.abnormality-disorder-name {
+	font-size: 13px;
+}
+.abnormality-cases-container {
+	font-size: .8em;
+	font-style: italic;
+	color: #777;
+}
+.legend-title{
+	color:  #0089DC;
+    text-align: left;
+}
+.candidategene-list {
+    margin-top: 8px;
+    min-height: 20px;
+}
+
+.patient-assign-legend{
+    padding: 8px;
+}
+
+.table>tbody>tr>td {
+	padding: 6px;
+}
+
+.magicsearch-wrapper .multi-items {
+    position:unset !important;
+}
+
+.magicsearch-wrapper .multi-item {
+    float:none !important;
+}
+
+.magicsearch-wrapper .multi-items .multi-item {
+    width:100% !important;
+    height:18px !important;
+}
+
+
+.heredity {
+	stroke: #262626;
+	stroke-width: 0.8;
+}
+
+.asymptomatic {
+	stroke: #262626;
+	stroke-width: 3;
+}
+
+/*
+    targets the first result's <a> element,
+    remove the a at the end to target the li itself
+*/
+.ui-autocomplete span { position: absolute; cursor: default}
+
+/* workarounds */
+html .ui-autocomplete { width:1px; } /* without this, the menu expands to 100% in IE6 */
+.ui-menu {
+    list-style:none;
+    padding: 2px;
+    margin: 0;
+    display:block;
+}
+.ui-menu .ui-menu {
+    margin-top: -3px;
+}
+.ui-menu .ui-menu-item {
+    margin:0;
+    padding: 0;
+    zoom: 1;
+    clear: left;
+    width: 100%;
+}
+.ui-menu .ui-menu-item  {
+    text-decoration:none;
+    display:block;
+    padding:.2em .4em;
+    line-height:1.5;
+    zoom:1;
+}
+.ui-menu .ui-menu-item .ui-state-hover,
+.ui-menu .ui-menu-item .ui-state-active {
+    margin: -1px;
+}
+
+.ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active, a.ui-button:active, .ui-button:active, .ui-button.ui-state-active:hover {
+     border: none;
+    font-weight:normal;
+     background: #c4d5ef;
+    color: black;
+}
+ .inline-block{
+display: inline-block;
+}
+.dot {
+	height: 12px;
+	width: 12px;
+	border-radius: 50%;
+	display: inline-block !important;
+}
+
+.non-standard-text:hover {
+	background-color: #7aa4e8;
+}

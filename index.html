@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,maximum-scale=2">
+
+    <link href="https://code.jquery.com/ui/1.12.1/themes/cupertino/jquery-ui.css" rel="stylesheet" type="text/css" media="all" />
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css" media="all" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css">
+    <!--<link rel="stylesheet" href="dist/css/pedigreejs.min.css" />-->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-multiselect/0.9.15/css/bootstrap-multiselect.css" rel="stylesheet" type="text/css" media="all" />
+    <link rel="stylesheet" href="css/pedigreejs.css" />
+    <link href="css/jquery.magicsearch.css" rel="stylesheet">
+    <style>
+        a[href^="http://"][target=_blank]:after,
+        a[href^="https://"][target=_blank]:after,
+        a[href^="ftp://"][target=_blank]:after {
+            content: "\f08e";
+            font-family: FontAwesome;
+            font-weight: normal;
+            font-style: normal;
+            display: inline-block;
+            text-decoration: none;
+            padding: 0px 2px;
+            display:inline;
+        }
+
+        .fa-rotate-45 {
+            -webkit-transform:rotate(45deg);
+            -moz-transform:rotate(45deg);
+            -ms-transform:rotate(45deg);
+            -o-transform:rotate(45deg);
+            transform:rotate(45deg);
+        }
+        #pedigree{
+            position: absolute;
+            top: 80px;
+            left: 0;
+        }
+        body{
+            overflow: hidden;
+        }
+        #pedigree_history{
+            text-align: center;
+            padding-top: 15px;
+        }
+    </style>
+
+    <script src="https://code.jquery.com/jquery-3.2.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/d3@4.13.0/build/d3.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-multiselect/0.9.15/js/bootstrap-multiselect.js"></script>
+    <!-- <script src="dist/js/pedigreejs.min.js"></script> -->
+    <script src="js/io.js"></script>
+    <script src="js/pedigree_form.js"></script>
+    <script src="js/pedigree.js"></script>
+    <script src="js/undo_redo_refresh.js"></script>
+    <script src="js/pan_zoom.js"></script>
+    <script src="js/legend.js"></script>
+    <script src="js/widgets.js"></script>
+    <script src="js/jquery.magicsearch.js"></script>
+
+
+    <script type="text/javascript">
+        $( document ).ready(function() {
+            var DEBUG = (pedigree_util.urlParam('debug') === null ? false : true);
+
+            ////////////////////
+            var dataset = [
+                {"name": "f11", "display_name": "", "full_name": "Jane Brown", "sex": "F", "status": 1, "top_level": true, "breast_cancer":true, "breast_cancer_age":67, "ovarian_cancer":true, "ovarian_cancer_age":63},
+                {"name": "m11", "sex": "M", "top_level": true},
+                {"name": "f12", "sex": "F", "top_level": true, "breast_cancer":true, "breast_cancer_age":55},
+                {"name": "m12", "sex": "M", "top_level": true},
+                {"name": "m21", "sex": "M", "mother": "f11", "father": "m11", "age": 56},
+                {"name": "f21", "sex": "F", "mother": "f12", "father": "m12", "breast_cancer":true, "breast_cancer_age":55, "brain_cancer":true, "brain_cancer_age": 60, "ovarian_cancer":true, "ovarian_cancer_age":58, "age": 63},
+                {"name": "ch1", "full_name": "Ana", "sex": "F", "mother": "f21", "father": "m21", "proband": true, "age": 25}
+            ];
+            $( "#pedigrees" ).append( $( "<div id='pedigree_history'></div>" ) );
+            $( "#pedigrees" ).append( $( "<div id='pedigree'></div>" ) );
+
+            var opts = {
+                'targetDiv': 'pedigree',
+                'btn_target': 'pedigree_history',
+                //	'nodeclick': pedigree_form.nodeclick,
+                /*'width': ($(window).width() > 660 ? 600 : $(window).width()- 50),*/
+                'width': ($(window).width() ),
+                'height': $(window).height()-30,
+                'symbol_size': 50,
+                'edit': true,
+                'zoomIn': .1,
+                'zoomOut': 2.,
+                'font_size': '0.75em',
+                labels: ['name', 'full_name', 'last_name'],
+                showPanZoomControl:true,
+                'DEBUG': (pedigree_util.urlParam('debug') === null ? false : true)};
+            // opts.conditions = {"Leukemia_condition":{"name":'Leukemia', 'color':'red'},
+            //                     'Myeloma_condition':{'name':'Myeloma', 'color':'#dff442'},
+            //                     'Brain_condition':{'name':'Brain', 'color':'#F68F35'}
+            // };
+
+            opts.conditions = {
+                "BREAST CANCER_condition": {
+                    "name": "BREAST CANCER",
+                    "color": "#E2B08B"
+                },
+                "RETINAL DYSTROPHY, EARLY-ONSET, WITH OR WITHOUT PITUITARY DYSFUNCTION, INCLUDED_condition": {
+                    "name": "RETINAL DYSTROPHY, EARLY-ONSET, WITH OR WITHOUT PITUITARY DYSFUNCTION, INCLUDED",
+                    "color": "#C89DF2"
+                },
+                "MITOCHONDRIAL MUSCLE MYOPATHY_condition": {
+                    "name": "MITOCHONDRIAL MUSCLE MYOPATHY",
+                    "color": "#D7B9F7"
+                },
+                "EPILEPSY, FAMILIAL FOCAL, WITH VARIABLE FOCI 2; FFEVF2_condition": {
+                    "name": "EPILEPSY, FAMILIAL FOCAL, WITH VARIABLE FOCI 2; FFEVF2",
+                    "color": "#9891D0"
+                },
+                "FANCONI ANEMIA, COMPLEMENTATION GROUP B; FANCB_condition": {
+                    "name": "FANCONI ANEMIA, COMPLEMENTATION GROUP B; FANCB",
+                    "color": "#AAC9E0"
+                },
+                "MICROCEPHALY 6, PRIMARY,MCPH6 MICROCEPHALY 6, PRIMARY, AUTOSOMAL RECESSIVE; MCPH6_condition": {
+                    "name": "MICROCEPHALY 6, PRIMARY,MCPH6 MICROCEPHALY 6, PRIMARY, AUTOSOMAL RECESSIVE; MCPH6",
+                    "color": "#69D485"
+                },
+                "MENTAL RETARDATION, AUTOSOMAL RECESSIVE 5; MRT5_condition": {
+                    "name": "MENTAL RETARDATION, AUTOSOMAL RECESSIVE 5; MRT5",
+                    "color": "#BEABB4"
+                },
+                "DEMO_condition": {
+                    "name": "DEMO",
+                    "color": "#6F7C94"
+                },
+                "EPILEPTIC ENCEPHALOPATHY, EARLY INFANTILE, 23; EIEE23_condition": {
+                    "name": "EPILEPTIC ENCEPHALOPATHY, EARLY INFANTILE, 23; EIEE23",
+                    "color": "#87B094"
+                },
+                "MENTAL RETARDATION, AUTOSOMAL RECESSIVE 13; MRT13_condition": {
+                    "name": "MENTAL RETARDATION, AUTOSOMAL RECESSIVE 13; MRT13",
+                    "color": "#DCE6BD"
+                },
+                "PROLIDASE DEFICIENCY_condition": {
+                    "name": "PROLIDASE DEFICIENCY",
+                    "color": "#F99AB8"
+                },
+                "SALT AND PEPPER DEVELOPMENTAL REGRESSION SYNDROME_condition": {
+                    "name": "SALT AND PEPPER DEVELOPMENTAL REGRESSION SYNDROME",
+                    "color": "#D9F7B4"
+                },
+                "DYSTONIA 11, MYOCLONIC; DYT11_condition": {
+                    "name": "DYSTONIA 11, MYOCLONIC; DYT11",
+                    "color": "#C294DF"
+                },
+                "NEUTROPENIA, SEVERE CONGENITAL, 3, AUTOSOMAL RECESSIVE; SCN3_condition": {
+                    "name": "NEUTROPENIA, SEVERE CONGENITAL, 3, AUTOSOMAL RECESSIVE; SCN3",
+                    "color": "#7688DA"
+                },
+                "PARAGANGLIOMAS 5_condition": {
+                    "name": "PARAGANGLIOMAS 5",
+                    "color": "#82DA8E"
+                },
+                "DYSTONIA 28, CHILDHOOD-ONSET; DYT28_condition": {
+                    "name": "DYSTONIA 28, CHILDHOOD-ONSET; DYT28",
+                    "color": "#D88E95"
+                },
+                "CEROID LIPOFUSCINOSIS, NEURONAL, 5; CLN5_condition": {
+                    "name": "CEROID LIPOFUSCINOSIS, NEURONAL, 5; CLN5",
+                    "color": "#F0C683"
+                },
+                "CRANIOECTODERMAL DYSPLASIA 2_condition": {
+                    "name": "CRANIOECTODERMAL DYSPLASIA 2",
+                    "color": "#FA778D"
+                },
+                "CEROID LIPOFUSCINOSIS, NEURONAL, 6; CLN6_condition": {
+                    "name": "CEROID LIPOFUSCINOSIS, NEURONAL, 6; CLN6",
+                    "color": "#6AB964"
+                },
+                "AURICULOCONDYLAR SYNDROME 2_condition": {
+                    "name": "AURICULOCONDYLAR SYNDROME 2",
+                    "color": "#FA69DE"
+                },
+                "CONGENITAL DISORDER OF GLYCOSYLATION, TYPE In; CDG1N_condition": {
+                    "name": "CONGENITAL DISORDER OF GLYCOSYLATION, TYPE In; CDG1N",
+                    "color": "#D09087"
+                },
+                "EPILEPTIC ENCEPHALOPATHY, EARLY INFANTILE, 3; EIEE3_condition": {
+                    "name": "EPILEPTIC ENCEPHALOPATHY, EARLY INFANTILE, 3; EIEE3",
+                    "color": "#BA6DA0"
+                },
+                "FRONTOTEMPORAL LOBAR DEGENERATION WITH TDP43 INCLUSIONS, GRN-RELATED_condition": {
+                    "name": "FRONTOTEMPORAL LOBAR DEGENERATION WITH TDP43 INCLUSIONS, GRN-RELATED",
+                    "color": "#FC7691"
+                },
+                "MACULAR DYSTROPHY, VITELLIFORM, 2; VMD2_condition": {
+                    "name": "MACULAR DYSTROPHY, VITELLIFORM, 2; VMD2",
+                    "color": "#BC7795"
+                },
+                "JOUBERT SYNDROME 18_condition": {
+                    "name": "JOUBERT SYNDROME 18",
+                    "color": "#D8D2B5"
+                },
+                "INFANTILE LIVER FAILURE SYNDROME 1_condition": {
+                    "name": "INFANTILE LIVER FAILURE SYNDROME 1",
+                    "color": "#A98F82"
+                },
+                "PARAGANGLIOMA AND GASTRIC STROMAL SARCOMA_condition": {
+                    "name": "PARAGANGLIOMA AND GASTRIC STROMAL SARCOMA",
+                    "color": "#74D1E7"
+                },
+                "SHORT-RIB THORACIC DYSPLASIA 3 WITH OR WITHOUT POLYDACTYLY_condition": {
+                    "name": "SHORT-RIB THORACIC DYSPLASIA 3 WITH OR WITHOUT POLYDACTYLY",
+                    "color": "#99E598"
+                },
+                "HYPERURICEMIC NEPHROPATHY, FAMILIAL JUVENILE, 1; HNFJ1_condition": {
+                    "name": "HYPERURICEMIC NEPHROPATHY, FAMILIAL JUVENILE, 1; HNFJ1",
+                    "color": "#B3B272"
+                },
+                "ARTHROGRYPOSIS, DISTAL, TYPE 3; DA3_condition": {
+                    "name": "ARTHROGRYPOSIS, DISTAL, TYPE 3; DA3",
+                    "color": "#6778D9"
+                },
+                "FRONTOTEMPORAL DEMENTIA AND/OR AMYOTROPHIC LATERAL SCLEROSIS 1_condition": {
+                    "name": "FRONTOTEMPORAL DEMENTIA AND/OR AMYOTROPHIC LATERAL SCLEROSIS 1",
+                    "color": "#CAD2AC"
+                },
+                "MITOCHONDRIAL DNA DEPLETION SYNDROME 13_condition": {
+                    "name": "MITOCHONDRIAL DNA DEPLETION SYNDROME 13",
+                    "color": "#7483EA"
+                },
+                "MYELODYSPLASTIC SYNDROME_condition": {
+                    "name": "MYELODYSPLASTIC SYNDROME",
+                    "color": "#82DA9C"
+                },
+                "METHYLMALONIC ACIDURIA AND HOMOCYSTINURIA, cblF TYPE; MAHCF_condition": {
+                    "name": "METHYLMALONIC ACIDURIA AND HOMOCYSTINURIA, cblF TYPE; MAHCF",
+                    "color": "#9DF17A"
+                },
+                "CILIARY DYSKINESIA, PRIMARY, 15; CILD15_condition": {
+                    "name": "CILIARY DYSKINESIA, PRIMARY, 15; CILD15",
+                    "color": "#8FED94"
+                },
+                "KNOBLOCH SYNDROME 1_condition": {
+                    "name": "KNOBLOCH SYNDROME 1",
+                    "color": "#FCADD8"
+                },
+                "SPHEROCYTOSIS, TYPE 2; SPH2_condition": {
+                    "name": "SPHEROCYTOSIS, TYPE 2; SPH2",
+                    "color": "#71B766"
+                },
+                "SECKEL SYNDROME 1_condition": {
+                    "name": "SECKEL SYNDROME 1",
+                    "color": "#838CB7"
+                },
+                "COMBINED OXIDATIVE PHOSPHORYLATION DEFICIENCY 13_condition": {
+                    "name": "COMBINED OXIDATIVE PHOSPHORYLATION DEFICIENCY 13",
+                    "color": "#9BC387"
+                },
+                "SEVERE COMBINED IMMUNODEFICIENCY_condition": {
+                    "name": "SEVERE COMBINED IMMUNODEFICIENCY",
+                    "color": "#CBEB79"
+                },
+                "CEREBRAL CREATINE DEFICIENCY SYNDROME 1_condition": {
+                    "name": "CEREBRAL CREATINE DEFICIENCY SYNDROME 1",
+                    "color": "#9F9DBA"
+                },
+                "COCKAYNE SYNDROME A_condition": {
+                    "name": "COCKAYNE SYNDROME A",
+                    "color": "#B969CD"
+                },
+                "LYMPHEDEMA, HEREDITARY, III; LMPH3_condition": {
+                    "name": "LYMPHEDEMA, HEREDITARY, III; LMPH3",
+                    "color": "#CF767A"
+                },
+                "MENTAL RETARDATION, X-LINKED 102; MRX102_condition": {
+                    "name": "MENTAL RETARDATION, X-LINKED 102; MRX102",
+                    "color": "#9DD5E6"
+                },
+                "DIABETES MELLITUS, PERMANENT NEONATAL; PNDM_condition": {
+                    "name": "DIABETES MELLITUS, PERMANENT NEONATAL; PNDM",
+                    "color": "#C36DAF"
+                },
+                "PONTOCEREBELLAR HYPOPLASIA, TYPE 1B; PCH1B_condition": {
+                    "name": "PONTOCEREBELLAR HYPOPLASIA, TYPE 1B; PCH1B",
+                    "color": "#83B3BD"
+                },
+                "INFANTILE CEREBELLAR-RETINAL DEGENERATION_condition": {
+                    "name": "INFANTILE CEREBELLAR-RETINAL DEGENERATION",
+                    "color": "#A2E96D"
+                },
+                "PONTOCEREBELLAR HYPOPLASIA, TYPE 2D; PCH2D_condition": {
+                    "name": "PONTOCEREBELLAR HYPOPLASIA, TYPE 2D; PCH2D",
+                    "color": "#74B0CE"
+                },
+                "PLEUROPULMONARY BLASTOMA_condition": {
+                    "name": "PLEUROPULMONARY BLASTOMA",
+                    "color": "#7FE294"
+                },
+                "CARDIOMYOPATHY, DILATED, 1E; CMD1E_condition": {
+                    "name": "CARDIOMYOPATHY, DILATED, 1E; CMD1E",
+                    "color": "#B4BEDF"
+                },
+                "MULTIPLE CONGENITAL ANOMALIES-HYPOTONIA-SEIZURES SYNDROME 2_condition": {
+                    "name": "MULTIPLE CONGENITAL ANOMALIES-HYPOTONIA-SEIZURES SYNDROME 2",
+                    "color": "#879672"
+                },
+                "MENTAL RETARDATION, AUTOSOMAL DOMINANT 35; MRD35_condition": {
+                    "name": "MENTAL RETARDATION, AUTOSOMAL DOMINANT 35; MRD35",
+                    "color": "#C7FBCB"
+                },
+                "ALPORT SYNDROME, AUTOSOMAL DOMINANT_condition": {
+                    "name": "ALPORT SYNDROME, AUTOSOMAL DOMINANT",
+                    "color": "#A4C776"
+                },
+                "OSTEOGENESIS IMPERFECTA, TYPE V; OI5_condition": {
+                    "name": "OSTEOGENESIS IMPERFECTA, TYPE V; OI5",
+                    "color": "#72C784"
+                },
+                "BARDET-BIEDL SYNDROME 2_condition": {
+                    "name": "BARDET-BIEDL SYNDROME 2",
+                    "color": "#A37CEA"
+                },
+                "JOHANSON-BLIZZARD SYNDROME_condition": {
+                    "name": "JOHANSON-BLIZZARD SYNDROME",
+                    "color": "#97A7F7"
+                },
+                "DYSKINESIA, SEIZURES, AND INTELLECTUAL DEVELOPMENTAL DISORDER; DYSEIDD_condition": {
+                    "name": "DYSKINESIA, SEIZURES, AND INTELLECTUAL DEVELOPMENTAL DISORDER; DYSEIDD",
+                    "color": "#C5BD75"
+                },
+                "BETA-UREIDOPROPIONASE DEFICIENCY_condition": {
+                    "name": "BETA-UREIDOPROPIONASE DEFICIENCY",
+                    "color": "#6A9584"
+                },
+                "PENDRED SYNDROME_condition": {
+                    "name": "PENDRED SYNDROME",
+                    "color": "#78C6E0"
+                },
+                "ARTHROGRYPOSIS, DISTAL, TYPE 2A; DA2A_condition": {
+                    "name": "ARTHROGRYPOSIS, DISTAL, TYPE 2A; DA2A",
+                    "color": "#BAF08D"
+                },
+                "CARDIOMYOPATHY, DILATED, WITH WOOLLY HAIR, KERATODERMA, AND TOOTH AGENESIS; DCWHKTA_condition": {
+                    "name": "CARDIOMYOPATHY, DILATED, WITH WOOLLY HAIR, KERATODERMA, AND TOOTH AGENESIS; DCWHKTA",
+                    "color": "#F6B66A"
+                },
+                "OSTEOPATHIA STRIATA WITH CRANIAL SCLEROSIS_condition": {
+                    "name": "OSTEOPATHIA STRIATA WITH CRANIAL SCLEROSIS",
+                    "color": "#A3E6E4"
+                },
+                "GRANULOMATOUS DISEASE, CHRONIC, AUTOSOMAL RECESSIVE, CYTOCHROME b-POSITIVE, TYPE I; CDG1_condition": {
+                    "name": "GRANULOMATOUS DISEASE, CHRONIC, AUTOSOMAL RECESSIVE, CYTOCHROME b-POSITIVE, TYPE I; CDG1",
+                    "color": "#D57D98"
+                },
+                "CUTIS LAXA, AUTOSOMAL RECESSIVE, TYPE IIIA; ARCL3A_condition": {
+                    "name": "CUTIS LAXA, AUTOSOMAL RECESSIVE, TYPE IIIA; ARCL3A",
+                    "color": "#6B757D"
+                },
+                "MAL DE MELEDA; MDM PALMOPLANTAR KERATODERMA, NAGASHIMA TYPE; PPKN_condition": {
+                    "name": "MAL DE MELEDA; MDM PALMOPLANTAR KERATODERMA, NAGASHIMA TYPE; PPKN",
+                    "color": "#86FDC3"
+                },
+                "BREAST AND COLORECTAL CANCER, SUSCEPTIBILITY_condition": {
+                    "name": "BREAST AND COLORECTAL CANCER, SUSCEPTIBILITY",
+                    "color": "#BD66E7"
+                },
+                "DEAFNESS, AUTOSOMAL RECESSIVE 3; DFNB3_condition": {
+                    "name": "DEAFNESS, AUTOSOMAL RECESSIVE 3; DFNB3",
+                    "color": "#99B985"
+                },
+                "MUSCULAR DYSTROPHY, LIMB-GIRDLE, TYPE 2A; LGMD2A_condition": {
+                    "name": "MUSCULAR DYSTROPHY, LIMB-GIRDLE, TYPE 2A; LGMD2A",
+                    "color": "#AD72FE"
+                },
+                "DEAFNESS, AUTOSOMAL DOMINANT 3B; DFNA3B  DEAFNESS, AUTOSOMAL DOMINANT 3B; DFNA3B_condition": {
+                    "name": "DEAFNESS, AUTOSOMAL DOMINANT 3B; DFNA3B  DEAFNESS, AUTOSOMAL DOMINANT 3B; DFNA3B",
+                    "color": "#6EF9B4"
+                },
+                "CEROID LIPOFUSCINOSIS, NEURONAL, 3; CLN3_condition": {
+                    "name": "CEROID LIPOFUSCINOSIS, NEURONAL, 3; CLN3",
+                    "color": "#EE78F1"
+                },
+                "HAREL-YOON SYNDROME_condition": {
+                    "name": "HAREL-YOON SYNDROME",
+                    "color": "#7569C0"
+                },
+                "GUANINE NUCLEOTIDE-BINDING PROTEIN, ALPHA-14; GNA14_condition": {
+                    "name": "GUANINE NUCLEOTIDE-BINDING PROTEIN, ALPHA-14; GNA14",
+                    "color": "#A9BFD1"
+                },
+                "HYPOPARATHYROIDISM-RETARDATION-DYSMORPHISM SYNDROME_condition": {
+                    "name": "HYPOPARATHYROIDISM-RETARDATION-DYSMORPHISM SYNDROME",
+                    "color": "#87CFA6"
+                },
+                "ICHTHYOSIS, X-LINKED; XLI_condition": {
+                    "name": "ICHTHYOSIS, X-LINKED; XLI",
+                    "color": "#CF76E3"
+                },
+                "CARDIOMYOPATHY, FAMILIAL HYPERTROPHIC, 8; CMH8 CARDIOMYOPATHY, FAMILIAL HYPERTROPHIC, 8; CMH8_condition": {
+                    "name": "CARDIOMYOPATHY, FAMILIAL HYPERTROPHIC, 8; CMH8 CARDIOMYOPATHY, FAMILIAL HYPERTROPHIC, 8; CMH8",
+                    "color": "#F3D8DC"
+                },
+                "RENAL CELL CARCINOMA, PAPILLARY, 1; RCCP1_condition": {
+                    "name": "RENAL CELL CARCINOMA, PAPILLARY, 1; RCCP1",
+                    "color": "#72A0BF"
+                },
+                "NEPHROTIC SYNDROME, TYPE 2; NPHS2_condition": {
+                    "name": "NEPHROTIC SYNDROME, TYPE 2; NPHS2",
+                    "color": "#9D77EF"
+                },
+                "SPONDYLOEPIPHYSEAL DYSPLASIA TARDA, X-LINKED; SEDT_condition": {
+                    "name": "SPONDYLOEPIPHYSEAL DYSPLASIA TARDA, X-LINKED; SEDT",
+                    "color": "#71A97F"
+                },
+                "LIPODYSTROPHY, FAMILIAL PARTIAL, TYPE 2; FPLD2_condition": {
+                    "name": "LIPODYSTROPHY, FAMILIAL PARTIAL, TYPE 2; FPLD2",
+                    "color": "#D4BF89"
+                },
+                "CONGENITAL DISORDER OF GLYCOSYLATION, TYPE Ik; CDG1K_condition": {
+                    "name": "CONGENITAL DISORDER OF GLYCOSYLATION, TYPE Ik; CDG1K",
+                    "color": "#B77FC4"
+                },
+                "NIJMEGEN BREAKAGE SYNDROME_condition": {
+                    "name": "NIJMEGEN BREAKAGE SYNDROME",
+                    "color": "#EC7173"
+                },
+                "CHARCOT-MARIE-TOOTH DISEASE, TYPE 4C; CMT4C  CHARCOT-MARIE-TOOTH DISEASE, TYPE 4C; CMT4C_condition": {
+                    "name": "CHARCOT-MARIE-TOOTH DISEASE, TYPE 4C; CMT4C  CHARCOT-MARIE-TOOTH DISEASE, TYPE 4C; CMT4C",
+                    "color": "#C2B879"
+                },
+                "TUMOR NECROSIS FACTOR RECEPTOR-ASSOCIATED PROTEIN 1_condition": {
+                    "name": "TUMOR NECROSIS FACTOR RECEPTOR-ASSOCIATED PROTEIN 1",
+                    "color": "#937DD3"
+                },
+                "MOLYBDENUM COFACTOR DEFICIENCY, COMPLEMENTATION GROUP B; MOCODB_condition": {
+                    "name": "MOLYBDENUM COFACTOR DEFICIENCY, COMPLEMENTATION GROUP B; MOCODB",
+                    "color": "#C9E8E0"
+                },
+                "MARINESCO-SJOGREN SYNDROME_condition": {
+                    "name": "MARINESCO-SJOGREN SYNDROME",
+                    "color": "#DBD0C0"
+                },
+                "RENAL TUBULAR DYSGENESIS_condition": {
+                    "name": "RENAL TUBULAR DYSGENESIS",
+                    "color": "#AB87C2"
+                },
+                "SURFACTANT METABOLISM DYSFUNCTION, PULMONARY, 2; SMDP2_condition": {
+                    "name": "SURFACTANT METABOLISM DYSFUNCTION, PULMONARY, 2; SMDP2",
+                    "color": "#C1A765"
+                },
+                "SCHOPF-SCHULZ-PASSARGE SYNDROME_condition": {
+                    "name": "SCHOPF-SCHULZ-PASSARGE SYNDROME",
+                    "color": "#FFD375"
+                },
+                "HYDROCEPHALUS, NONSYNDROMIC, AUTOSOMAL RECESSIVE 2; HYC2_condition": {
+                    "name": "HYDROCEPHALUS, NONSYNDROMIC, AUTOSOMAL RECESSIVE 2; HYC2",
+                    "color": "#C3FD7F"
+                },
+                "FRASER SYNDROME_condition": {
+                    "name": "FRASER SYNDROME",
+                    "color": "#F1A778"
+                },
+                "PLATELET DISORDER, FAMILIAL, WITH ASSOCIATED MYELOID MALIGNANCY; FPDMM_condition": {
+                    "name": "PLATELET DISORDER, FAMILIAL, WITH ASSOCIATED MYELOID MALIGNANCY; FPDMM",
+                    "color": "#A19DC1"
+                },
+                "ENCEPHALOPATHY, ACUTE, INFECTION-INDUCED, SUSCEPTIBILITY TO, 3; IIAE3_condition": {
+                    "name": "ENCEPHALOPATHY, ACUTE, INFECTION-INDUCED, SUSCEPTIBILITY TO, 3; IIAE3",
+                    "color": "#EDAFD3"
+                },
+                "BREAST-OVARIAN CANCER, FAMILIAL, SUSCEPTIBILITY TO, 3; BROVCA3_condition": {
+                    "name": "BREAST-OVARIAN CANCER, FAMILIAL, SUSCEPTIBILITY TO, 3; BROVCA3",
+                    "color": "#706ABA"
+                },
+                "EPIDERMOLYSIS BULLOSA SIMPLEX, DOWLING-MEARA TYPE; EBSDM_condition": {
+                    "name": "EPIDERMOLYSIS BULLOSA SIMPLEX, DOWLING-MEARA TYPE; EBSDM",
+                    "color": "#80AFE2"
+                },
+                "CARNITINE-ACYLCARNITINE TRANSLOCASE DEFICIENCY_condition": {
+                    "name": "CARNITINE-ACYLCARNITINE TRANSLOCASE DEFICIENCY",
+                    "color": "#D3C2BF"
+                },
+                "HOMOCYSTINURIA-MEGALOBLASTIC ANEMIA, cblG COMPLEMENTATION TYPE; HMAG_condition": {
+                    "name": "HOMOCYSTINURIA-MEGALOBLASTIC ANEMIA, cblG COMPLEMENTATION TYPE; HMAG",
+                    "color": "#B3CFB6"
+                },
+                "FETAL AKINESIA DEFORMATION SEQUENCE_condition": {
+                    "name": "FETAL AKINESIA DEFORMATION SEQUENCE",
+                    "color": "#B2A5EC"
+                },
+                "CONGENITAL DISORDER OF DEGLYCOSYLATION_condition": {
+                    "name": "CONGENITAL DISORDER OF DEGLYCOSYLATION",
+                    "color": "#D9AC66"
+                },
+                "PONTOCEREBELLAR HYPOPLASIA, TYPE 2A; PCH2A_condition": {
+                    "name": "PONTOCEREBELLAR HYPOPLASIA, TYPE 2A; PCH2A",
+                    "color": "#6CAA9A"
+                },
+                "ALAGILLE SYNDROME 1_condition": {
+                    "name": "ALAGILLE SYNDROME 1",
+                    "color": "#CFB5EA"
+                },
+                "GALACTOSIALIDOSIS_condition": {
+                    "name": "GALACTOSIALIDOSIS",
+                    "color": "#D6CC9B"
+                },
+                "MUSCULAR DYSTROPHY, LIMB-GIRDLE, TYPE 2S; LGMD2S_condition": {
+                    "name": "MUSCULAR DYSTROPHY, LIMB-GIRDLE, TYPE 2S; LGMD2S",
+                    "color": "#E0B869"
+                },
+                "SPASTIC PARAPLEGIA 49, AUTOSOMAL RECESSIVE; SPG49_condition": {
+                    "name": "SPASTIC PARAPLEGIA 49, AUTOSOMAL RECESSIVE; SPG49",
+                    "color": "#FF968F"
+                },
+                "CHARCOT-MARIE-TOOTH DISEASE, DOMINANT INTERMEDIATE C; CMTDIC_condition": {
+                    "name": "CHARCOT-MARIE-TOOTH DISEASE, DOMINANT INTERMEDIATE C; CMTDIC",
+                    "color": "#959783"
+                },
+                "MECKEL SYNDROME, TYPE 11; MKS11_condition": {
+                    "name": "MECKEL SYNDROME, TYPE 11; MKS11",
+                    "color": "#9FD786"
+                },
+                "USHER SYNDROME, TYPE IIC; USH2C_condition": {
+                    "name": "USHER SYNDROME, TYPE IIC; USH2C",
+                    "color": "#E7D7A0"
+                },
+                "DANON DISEASE_condition": {
+                    "name": "DANON DISEASE",
+                    "color": "#94867A"
+                },
+                "CARDIOFACIOCUTANEOUS SYNDROME 4_condition": {
+                    "name": "CARDIOFACIOCUTANEOUS SYNDROME 4",
+                    "color": "#67758B"
+                },
+                "JOUBERT SYNDROME 23_condition": {
+                    "name": "JOUBERT SYNDROME 23",
+                    "color": "#DF9777"
+                },
+                "MEGALENCEPHALIC LEUKOENCEPHALOPATHY WITH SUBCORTICAL CYSTS 1_condition": {
+                    "name": "MEGALENCEPHALIC LEUKOENCEPHALOPATHY WITH SUBCORTICAL CYSTS 1",
+                    "color": "#68C8C0"
+                },
+                "SPONDYLOEPIMETAPHYSEAL DYSPLASIA, MISSOURI TYPE_condition": {
+                    "name": "SPONDYLOEPIMETAPHYSEAL DYSPLASIA, MISSOURI TYPE",
+                    "color": "#C793F5"
+                },
+                "EPILEPTIC ENCEPHALOPATHY, EARLY INFANTILE, 5; EIEE5_condition": {
+                    "name": "EPILEPTIC ENCEPHALOPATHY, EARLY INFANTILE, 5; EIEE5",
+                    "color": "#CB7ADC"
+                },
+                "XERODERMA PIGMENTOSUM, COMPLEMENTATION GROUP G; XPG_condition": {
+                    "name": "XERODERMA PIGMENTOSUM, COMPLEMENTATION GROUP G; XPG",
+                    "color": "#AAA7FF"
+                },
+                "COENZYME Q10 DEFICIENCY, PRIMARY, 7; COQ10D7_condition": {
+                    "name": "COENZYME Q10 DEFICIENCY, PRIMARY, 7; COQ10D7",
+                    "color": "#C2B973"
+                },
+                "METHYLMALONIC ACIDURIA AND HOMOCYSTINURIA, cblC TYPE_condition": {
+                    "name": "METHYLMALONIC ACIDURIA AND HOMOCYSTINURIA, cblC TYPE",
+                    "color": "#F3F8D9"
+                },
+                "ACHROMATOPSIA 2_condition": {
+                    "name": "ACHROMATOPSIA 2",
+                    "color": "#83C6DA"
+                },
+                "PROTHROMBIN DEFICIENCY, CONGENITAL_condition": {
+                    "name": "PROTHROMBIN DEFICIENCY, CONGENITAL",
+                    "color": "#899EC0"
+                },
+                "CARDIOMYOPATHY, DILATED, 1G; CMD1G_condition": {
+                    "name": "CARDIOMYOPATHY, DILATED, 1G; CMD1G",
+                    "color": "#9BBA75"
+                },
+                "FACTOR V DEFICIENCY_condition": {
+                    "name": "FACTOR V DEFICIENCY",
+                    "color": "#D670E1"
+                },
+                "BARDET-BIEDL SYNDROME 4_condition": {
+                    "name": "BARDET-BIEDL SYNDROME 4",
+                    "color": "#E6AEB0"
+                },
+                "PEROXISOME BIOGENESIS DISORDER 2A (ZELLWEGER)_condition": {
+                    "name": "PEROXISOME BIOGENESIS DISORDER 2A (ZELLWEGER)",
+                    "color": "#B5739E"
+                },
+                "MUSCULAR DYSTROPHY-DYSTROGLYCANOPATHY (CONGENITAL WITH BRAIN AND EYE ANOMALIES), TYPE A, 1; MDDGA1_condition": {
+                    "name": "MUSCULAR DYSTROPHY-DYSTROGLYCANOPATHY (CONGENITAL WITH BRAIN AND EYE ANOMALIES), TYPE A, 1; MDDGA1",
+                    "color": "#C7A3D0"
+                },
+                "RETINITIS PIGMENTOSA 3_condition": {
+                    "name": "RETINITIS PIGMENTOSA 3",
+                    "color": "#89A282"
+                },
+                "MITOCHONDRIAL COMPLEX I DEFICIENCY DUE TO ACAD9 DEFICIENCY_condition": {
+                    "name": "MITOCHONDRIAL COMPLEX I DEFICIENCY DUE TO ACAD9 DEFICIENCY",
+                    "color": "#928C93"
+                },
+                "AMEGAKARYOCYTIC THROMBOCYTOPENIA, CONGENITAL; CAMT_condition": {
+                    "name": "AMEGAKARYOCYTIC THROMBOCYTOPENIA, CONGENITAL; CAMT",
+                    "color": "#94EFFB"
+                },
+                "BIOTINIDASE DEFICIENCY_condition": {
+                    "name": "BIOTINIDASE DEFICIENCY",
+                    "color": "#DDA7A9"
+                },
+                "GAZE PALSY, FAMILIAL HORIZONTAL, WITH PROGRESSIVE SCOLIOSIS; HGPPS_condition": {
+                    "name": "GAZE PALSY, FAMILIAL HORIZONTAL, WITH PROGRESSIVE SCOLIOSIS; HGPPS",
+                    "color": "#FAC593"
+                },
+                "CONGENITAL DISORDER OF GLYCOSYLATION, TYPE IIl; CDG2L_condition": {
+                    "name": "CONGENITAL DISORDER OF GLYCOSYLATION, TYPE IIl; CDG2L",
+                    "color": "#F6D296"
+                },
+                "3-METHYLGLUTACONIC ACIDURIA WITH DEAFNESS, ENCEPHALOPATHY, AND LEIGH-LIKE SYNDROME; MEGDEL_condition": {
+                    "name": "3-METHYLGLUTACONIC ACIDURIA WITH DEAFNESS, ENCEPHALOPATHY, AND LEIGH-LIKE SYNDROME; MEGDEL",
+                    "color": "#84DACF"
+                },
+                "MENTAL RETARDATION, AUTOSOMAL RECESSIVE 38; MRT38_condition": {
+                    "name": "MENTAL RETARDATION, AUTOSOMAL RECESSIVE 38; MRT38",
+                    "color": "#A3F69F"
+                },
+                "HIRSCHSPRUNG DISEASE, SUSCEPTIBILITY TO, 1; HSCR1_condition": {
+                    "name": "HIRSCHSPRUNG DISEASE, SUSCEPTIBILITY TO, 1; HSCR1",
+                    "color": "#DD9168"
+                },
+                "VAN DER WOUDE SYNDROME 1_condition": {
+                    "name": "VAN DER WOUDE SYNDROME 1",
+                    "color": "#BF7BA5"
+                },
+                "BIRT-HOGG-DUBE SYNDROME_condition": {
+                    "name": "BIRT-HOGG-DUBE SYNDROME",
+                    "color": "#C1C4D9"
+                },
+                "MECKEL SYNDROME, TYPE 8; MKS8_condition": {
+                    "name": "MECKEL SYNDROME, TYPE 8; MKS8",
+                    "color": "#A0E470"
+                },
+                "USHER SYNDROME, TYPE IF; USH1F_condition": {
+                    "name": "USHER SYNDROME, TYPE IF; USH1F",
+                    "color": "#D6D178"
+                },
+                "MULTIPLE ENDOCRINE NEOPLASIA, TYPE IV; MEN4_condition": {
+                    "name": "MULTIPLE ENDOCRINE NEOPLASIA, TYPE IV; MEN4",
+                    "color": "#B2C2B3"
+                },
+                "DYSKERATOSIS CONGENITA, AUTOSOMAL DOMINANT, 2; DKCA2   DYSKERATOSIS CONGENITA; DKCA2_condition": {
+                    "name": "DYSKERATOSIS CONGENITA, AUTOSOMAL DOMINANT, 2; DKCA2   DYSKERATOSIS CONGENITA; DKCA2",
+                    "color": "#DBC7AD"
+                },
+                "JOUBERT SYNDROME 2_condition": {
+                    "name": "JOUBERT SYNDROME 2",
+                    "color": "#9D79AC"
+                },
+                "PACHYONYCHIA CONGENITA 3_condition": {
+                    "name": "PACHYONYCHIA CONGENITA 3",
+                    "color": "#C9BE89"
+                },
+                "CEROID LIPOFUSCINOSIS, NEURONAL, 1; CLN1_condition": {
+                    "name": "CEROID LIPOFUSCINOSIS, NEURONAL, 1; CLN1",
+                    "color": "#C0B1BB"
+                },
+                "PARAMYOTONIA CONGENITA OF VON EULENBURG_condition": {
+                    "name": "PARAMYOTONIA CONGENITA OF VON EULENBURG",
+                    "color": "#9ADF73"
+                },
+                "PEROXISOME BIOGENESIS DISORDER 11A (ZELLWEGER)_condition": {
+                    "name": "PEROXISOME BIOGENESIS DISORDER 11A (ZELLWEGER)",
+                    "color": "#9B768F"
+                },
+                "ALBINISM, OCULOCUTANEOUS, TYPE III; OCA3_condition": {
+                    "name": "ALBINISM, OCULOCUTANEOUS, TYPE III; OCA3",
+                    "color": "#E4FE6C"
+                },
+                "GLYCOGEN STORAGE DISEASE III_condition": {
+                    "name": "GLYCOGEN STORAGE DISEASE III",
+                    "color": "#C681B5"
+                },
+                "METHYLMALONIC ACIDURIA DUE TO METHYLMALONYL-CoA MUTASE DEFICIENCY_condition": {
+                    "name": "METHYLMALONIC ACIDURIA DUE TO METHYLMALONYL-CoA MUTASE DEFICIENCY",
+                    "color": "#BCD190"
+                },
+                "TREACHER COLLINS SYNDROME 2_condition": {
+                    "name": "TREACHER COLLINS SYNDROME 2",
+                    "color": "#78D2D4"
+                },
+                "EPIDERMOLYTIC HYPERKERATOSIS_condition": {
+                    "name": "EPIDERMOLYTIC HYPERKERATOSIS",
+                    "color": "#BA95EC"
+                },
+                "MUCOLIPIDOSIS II ALPHA/BETA_condition": {
+                    "name": "MUCOLIPIDOSIS II ALPHA/BETA",
+                    "color": "#9E92A8"
+                },
+                "BARTH SYNDROME_condition": {
+                    "name": "BARTH SYNDROME",
+                    "color": "#97CEAD"
+                },
+                "ANIRIDIA_condition": {
+                    "name": "ANIRIDIA",
+                    "color": "#CAE980"
+                },
+                "ICHTHYOSIS, SPASTIC QUADRIPLEGIA, AND MENTAL RETARDATION; ISQMR_condition": {
+                    "name": "ICHTHYOSIS, SPASTIC QUADRIPLEGIA, AND MENTAL RETARDATION; ISQMR",
+                    "color": "#9967CF"
+                },
+                "ALPORT SYNDROME, X-LINKED; ATS   ALPORT SYNDROME, X-LINKED; ATS_condition": {
+                    "name": "ALPORT SYNDROME, X-LINKED; ATS   ALPORT SYNDROME, X-LINKED; ATS",
+                    "color": "#F9AABB"
+                },
+                "TUBEROUS SCLEROSIS 2_condition": {
+                    "name": "TUBEROUS SCLEROSIS 2",
+                    "color": "#E5DDEB"
+                },
+                "MICROCEPHALY 5, PRIMARY, AUTOSOMAL RECESSIVE; MCPH5_condition": {
+                    "name": "MICROCEPHALY 5, PRIMARY, AUTOSOMAL RECESSIVE; MCPH5",
+                    "color": "#9D778F"
+                },
+                "WILSON DISEASE_condition": {
+                    "name": "WILSON DISEASE",
+                    "color": "#6DC8D1"
+                },
+                "BARTTER SYNDROME, TYPE 3; BARTS3_condition": {
+                    "name": "BARTTER SYNDROME, TYPE 3; BARTS3",
+                    "color": "#D271B0"
+                },
+                "ACROMESOMELIC DYSPLASIA, MAROTEAUX TYPE; AMDM_condition": {
+                    "name": "ACROMESOMELIC DYSPLASIA, MAROTEAUX TYPE; AMDM",
+                    "color": "#D2C0B4"
+                },
+                "TEMTAMY SYNDROME_condition": {
+                    "name": "TEMTAMY SYNDROME",
+                    "color": "#D0DE8D"
+                },
+                "CARDIOMYOPATHY, FAMILIAL HYPERTROPHIC, 2; CMH2_condition": {
+                    "name": "CARDIOMYOPATHY, FAMILIAL HYPERTROPHIC, 2; CMH2",
+                    "color": "#8C8FDE"
+                },
+                "FAMILIAL COLD AUTOINFLAMMATORY SYNDROME 1_condition": {
+                    "name": "FAMILIAL COLD AUTOINFLAMMATORY SYNDROME 1",
+                    "color": "#C773D8"
+                },
+                "TELANGIECTASIA, HEREDITARY HEMORRHAGIC, TYPE 2; HHT2_condition": {
+                    "name": "TELANGIECTASIA, HEREDITARY HEMORRHAGIC, TYPE 2; HHT2",
+                    "color": "#D1EBA5"
+                },
+                "LEIGH SYNDROME_condition": {
+                    "name": "LEIGH SYNDROME",
+                    "color": "#EBF6C4"
+                },
+                "MINICORE MYOPATHY WITH EXTERNAL OPHTHALMOPLEGIA_condition": {
+                    "name": "MINICORE MYOPATHY WITH EXTERNAL OPHTHALMOPLEGIA",
+                    "color": "#A0A5DB"
+                },
+                "COLORECTAL CANCER, HEREDITARY NONPOLYPOSIS, TYPE 4; HNPCC4_condition": {
+                    "name": "COLORECTAL CANCER, HEREDITARY NONPOLYPOSIS, TYPE 4; HNPCC4",
+                    "color": "#D091C1"
+                },
+                "BLEEDING DISORDER, PLATELET-TYPE, 16; BDPLT16_condition": {
+                    "name": "BLEEDING DISORDER, PLATELET-TYPE, 16; BDPLT16",
+                    "color": "#FDF175"
+                },
+                "LEBER CONGENITAL AMAUROSIS 4_condition": {
+                    "name": "LEBER CONGENITAL AMAUROSIS 4",
+                    "color": "#DA7596"
+                },
+                "SENGERS SYNDROME_condition": {
+                    "name": "SENGERS SYNDROME",
+                    "color": "#76AED5"
+                },
+                "OSTEOPETROSIS, AUTOSOMAL DOMINANT 2; OPTA2_condition": {
+                    "name": "OSTEOPETROSIS, AUTOSOMAL DOMINANT 2; OPTA2",
+                    "color": "#6D9971"
+                },
+                "NIEMANN-PICK DISEASE, TYPE C2; NPC2_condition": {
+                    "name": "NIEMANN-PICK DISEASE, TYPE C2; NPC2",
+                    "color": "#AF809D"
+                },
+                "MYOPATHY, AREFLEXIA, RESPIRATORY DISTRESS, AND DYSPHAGIA, EARLY-ONSET; EMARDD_condition": {
+                    "name": "MYOPATHY, AREFLEXIA, RESPIRATORY DISTRESS, AND DYSPHAGIA, EARLY-ONSET; EMARDD",
+                    "color": "#CBF1FA"
+                },
+                "CRANIOSYNOSTOSIS 2_condition": {
+                    "name": "CRANIOSYNOSTOSIS 2",
+                    "color": "#6FC0CB"
+                },
+                "HEREDITARY MOTOR AND SENSORY NEUROPATHY, TYPE IIC; HMSN2C_condition": {
+                    "name": "HEREDITARY MOTOR AND SENSORY NEUROPATHY, TYPE IIC; HMSN2C",
+                    "color": "#9F9B93"
+                },
+                "JOUBERT SYNDROME 21_condition": {
+                    "name": "JOUBERT SYNDROME 21",
+                    "color": "#C4A88A"
+                },
+                "MICROCEPHALIC OSTEODYSPLASTIC PRIMORDIAL DWARFISM, TYPE I; MOPD1_condition": {
+                    "name": "MICROCEPHALIC OSTEODYSPLASTIC PRIMORDIAL DWARFISM, TYPE I; MOPD1",
+                    "color": "#CCDDB8"
+                },
+                "DYSTONIA 3, TORSION, X-LINKED; DYT3_condition": {
+                    "name": "DYSTONIA 3, TORSION, X-LINKED; DYT3",
+                    "color": "#FCB399"
+                },
+                "ALBINISM, OCULAR, TYPE I; OA1_condition": {
+                    "name": "ALBINISM, OCULAR, TYPE I; OA1",
+                    "color": "#96BEA5"
+                },
+                "IFAP SYNDROME WITH OR WITHOUT BRESHECK SYNDROME_condition": {
+                    "name": "IFAP SYNDROME WITH OR WITHOUT BRESHECK SYNDROME",
+                    "color": "#7D83B6"
+                },
+                "EHLERS-DANLOS SYNDROME, TYPE VII, AUTOSOMAL RECESSIVE EHLERS-DANLOS SYNDROME, DERMATOSPARAXIS TYPE_condition": {
+                    "name": "EHLERS-DANLOS SYNDROME, TYPE VII, AUTOSOMAL RECESSIVE EHLERS-DANLOS SYNDROME, DERMATOSPARAXIS TYPE",
+                    "color": "#C067D4"
+                },
+                "FRUCTOSE INTOLERANCE, HEREDITARY_condition": {
+                    "name": "FRUCTOSE INTOLERANCE, HEREDITARY",
+                    "color": "#CABFD2"
+                },
+                "PEROXISOMAL ACYL-CoA OXIDASE DEFICIENCY_condition": {
+                    "name": "PEROXISOMAL ACYL-CoA OXIDASE DEFICIENCY",
+                    "color": "#E3A6A6"
+                },
+                "PERLMAN SYNDROME_condition": {
+                    "name": "PERLMAN SYNDROME",
+                    "color": "#CCE2C6"
+                },
+                "JOUBERT SYNDROME 17_condition": {
+                    "name": "JOUBERT SYNDROME 17",
+                    "color": "#A78199"
+                },
+                "LESCH-NYHAN SYNDROME_condition": {
+                    "name": "LESCH-NYHAN SYNDROME",
+                    "color": "#B49FE5"
+                },
+                "CONE-ROD DYSTROPHY 6_condition": {
+                    "name": "CONE-ROD DYSTROPHY 6",
+                    "color": "#EED9D6"
+                },
+                "RAP GUANINE NUCLEOTIDE EXCHANGE FACTOR 6_condition": {
+                    "name": "RAP GUANINE NUCLEOTIDE EXCHANGE FACTOR 6",
+                    "color": "#AF8195"
+                },
+                "RETINITIS PIGMENTOSA 2_condition": {
+                    "name": "RETINITIS PIGMENTOSA 2",
+                    "color": "#7E6AE1"
+                },
+                "HYPOGONADOTROPIC HYPOGONADISM 1 WITH OR WITHOUT ANOSMIA_condition": {
+                    "name": "HYPOGONADOTROPIC HYPOGONADISM 1 WITH OR WITHOUT ANOSMIA",
+                    "color": "#AFB8CC"
+                },
+                "CHOLESTASIS, PROGRESSIVE FAMILIAL INTRAHEPATIC, 3; PFIC3_condition": {
+                    "name": "CHOLESTASIS, PROGRESSIVE FAMILIAL INTRAHEPATIC, 3; PFIC3",
+                    "color": "#C0EC6A"
+                },
+                "HEREDITARY LEIOMYOMATOSIS AND RENAL CELL CANCER_condition": {
+                    "name": "HEREDITARY LEIOMYOMATOSIS AND RENAL CELL CANCER",
+                    "color": "#85A67F"
+                },
+                "BRANCHIOOCULOFACIAL SYNDROME_condition": {
+                    "name": "BRANCHIOOCULOFACIAL SYNDROME",
+                    "color": "#C2D8E9"
+                },
+                "CEROID LIPOFUSCINOSIS, NEURONAL, 10; CLN10_condition": {
+                    "name": "CEROID LIPOFUSCINOSIS, NEURONAL, 10; CLN10",
+                    "color": "#A0B4AB"
+                },
+                "HYPER-IgE RECURRENT INFECTION SYNDROME, AUTOSOMAL RECESSIVE_condition": {
+                    "name": "HYPER-IgE RECURRENT INFECTION SYNDROME, AUTOSOMAL RECESSIVE",
+                    "color": "#B48AE0"
+                },
+                "BLOOM SYNDROME_condition": {
+                    "name": "BLOOM SYNDROME",
+                    "color": "#BB8489"
+                },
+                "CLEIDOCRANIAL DYSPLASIA_condition": {
+                    "name": "CLEIDOCRANIAL DYSPLASIA",
+                    "color": "#6CB9E9"
+                },
+                "PERIVENTRICULAR NODULAR HETEROTOPIA 1_condition": {
+                    "name": "PERIVENTRICULAR NODULAR HETEROTOPIA 1",
+                    "color": "#847992"
+                },
+                "WARBURG MICRO SYNDROME 1_condition": {
+                    "name": "WARBURG MICRO SYNDROME 1",
+                    "color": "#7E8D87"
+                },
+                "LONG QT SYNDROME 1_condition": {
+                    "name": "LONG QT SYNDROME 1",
+                    "color": "#DCC1C6"
+                },
+                "DIHYDROLIPOAMIDE DEHYDROGENASE DEFICIENCY_condition": {
+                    "name": "DIHYDROLIPOAMIDE DEHYDROGENASE DEFICIENCY",
+                    "color": "#9966F6"
+                },
+                "ARTHROGRYPOSIS, DISTAL, TYPE 9; DA9_condition": {
+                    "name": "ARTHROGRYPOSIS, DISTAL, TYPE 9; DA9",
+                    "color": "#AFCBA2"
+                },
+                "SPINOCEREBELLAR ATAXIA 8_condition": {
+                    "name": "SPINOCEREBELLAR ATAXIA 8",
+                    "color": "#B5BDD5"
+                },
+                "THROMBOCYTOPENIA-ABSENT RADIUS SYNDROME_condition": {
+                    "name": "THROMBOCYTOPENIA-ABSENT RADIUS SYNDROME",
+                    "color": "#6FE0F7"
+                },
+                "HERMANSKY-PUDLAK SYNDROME 1_condition": {
+                    "name": "HERMANSKY-PUDLAK SYNDROME 1",
+                    "color": "#CEDA9F"
+                },
+                "ACHROMATOPSIA 3_condition": {
+                    "name": "ACHROMATOPSIA 3",
+                    "color": "#FA9074"
+                },
+                "DIAMOND-BLACKFAN ANEMIA 2_condition": {
+                    "name": "DIAMOND-BLACKFAN ANEMIA 2",
+                    "color": "#F3A2BF"
+                },
+                "MYOGLOBINURIA, ACUTE RECURRENT, AUTOSOMAL RECESSIVE_condition": {
+                    "name": "MYOGLOBINURIA, ACUTE RECURRENT, AUTOSOMAL RECESSIVE",
+                    "color": "#C0AAB5"
+                },
+                "FACTOR VII DEFICIENCY_condition": {
+                    "name": "FACTOR VII DEFICIENCY",
+                    "color": "#B565C7"
+                },
+                "CUTIS LAXA, AUTOSOMAL DOMINANT 1; ADCL1_condition": {
+                    "name": "CUTIS LAXA, AUTOSOMAL DOMINANT 1; ADCL1",
+                    "color": "#E4FCD0"
+                },
+                "SULFOCYSTEINURIA_condition": {
+                    "name": "SULFOCYSTEINURIA",
+                    "color": "#E3EFD4"
+                },
+                "CUTIS LAXA, AUTOSOMAL RECESSIVE, TYPE IIB; ARCL2B_condition": {
+                    "name": "CUTIS LAXA, AUTOSOMAL RECESSIVE, TYPE IIB; ARCL2B",
+                    "color": "#B56CFF"
+                },
+                "FRIEDREICH ATAXIA 1_condition": {
+                    "name": "FRIEDREICH ATAXIA 1",
+                    "color": "#87D9CB"
+                },
+                "LEBER CONGENITAL AMAUROSIS 5_condition": {
+                    "name": "LEBER CONGENITAL AMAUROSIS 5",
+                    "color": "#7FF584"
+                },
+                "MUSCULAR DYSTROPHY-DYSTROGLYCANOPATHY (CONGENITAL WITH BRAIN AND EYE ANOMALIES), TYPE A, 5; MDDGA5_condition": {
+                    "name": "MUSCULAR DYSTROPHY-DYSTROGLYCANOPATHY (CONGENITAL WITH BRAIN AND EYE ANOMALIES), TYPE A, 5; MDDGA5",
+                    "color": "#C5C6CF"
+                },
+                "IMMUNODEFICIENCY WITH HYPER-IgM, TYPE 1; HIGM1_condition": {
+                    "name": "IMMUNODEFICIENCY WITH HYPER-IgM, TYPE 1; HIGM1",
+                    "color": "#A2899D"
+                },
+                "HYDROCEPHALUS DUE TO CONGENITAL STENOSIS OF AQUEDUCT OF SYLVIUS_condition": {
+                    "name": "HYDROCEPHALUS DUE TO CONGENITAL STENOSIS OF AQUEDUCT OF SYLVIUS",
+                    "color": "#FF717E"
+                },
+                "ADRENOLEUKODYSTROPHY_condition": {
+                    "name": "ADRENOLEUKODYSTROPHY",
+                    "color": "#A892EB"
+                },
+                "WISKOTT-ALDRICH SYNDROME_condition": {
+                    "name": "WISKOTT-ALDRICH SYNDROME",
+                    "color": "#BBC7C4"
+                },
+                "VON HIPPEL-LINDAU SYNDROME_condition": {
+                    "name": "VON HIPPEL-LINDAU SYNDROME",
+                    "color": "#C2E1DF"
+                },
+                "TUBEROUS SCLEROSIS 1_condition": {
+                    "name": "TUBEROUS SCLEROSIS 1",
+                    "color": "#72797C"
+                },
+                "TREACHER COLLINS SYNDROME 1_condition": {
+                    "name": "TREACHER COLLINS SYNDROME 1",
+                    "color": "#68AADD"
+                },
+                "BETA-THALASSEMIA_condition": {
+                    "name": "BETA-THALASSEMIA",
+                    "color": "#94E897"
+                },
+                "ALPHA-THALASSEMIA_condition": {
+                    "name": "ALPHA-THALASSEMIA",
+                    "color": "#8DCAC6"
+                },
+                "TAY-SACHS DISEASE_condition": {
+                    "name": "TAY-SACHS DISEASE",
+                    "color": "#D6D8AC"
+                },
+                "SYMPHALANGISM, PROXIMAL; SYM1_condition": {
+                    "name": "SYMPHALANGISM, PROXIMAL; SYM1",
+                    "color": "#B3B065"
+                },
+                "SPINOCEREBELLAR ATAXIA 7_condition": {
+                    "name": "SPINOCEREBELLAR ATAXIA 7",
+                    "color": "#E6FC79"
+                },
+                "SPINOCEREBELLAR ATAXIA 6_condition": {
+                    "name": "SPINOCEREBELLAR ATAXIA 6",
+                    "color": "#AAD1EB"
+                },
+                "MACHADO-JOSEPH DISEASE_condition": {
+                    "name": "MACHADO-JOSEPH DISEASE",
+                    "color": "#FD8980"
+                },
+                "SPINOCEREBELLAR ATAXIA 2_condition": {
+                    "name": "SPINOCEREBELLAR ATAXIA 2",
+                    "color": "#AB7CCC"
+                },
+                "SPINAL MUSCULAR ATROPHY, TYPE I; SMA1_condition": {
+                    "name": "SPINAL MUSCULAR ATROPHY, TYPE I; SMA1",
+                    "color": "#71E46E"
+                },
+                "SICKLE CELL ANEMIA_condition": {
+                    "name": "SICKLE CELL ANEMIA",
+                    "color": "#75BE7B"
+                },
+                "RETINOBLASTOMA_condition": {
+                    "name": "RETINOBLASTOMA",
+                    "color": "#B385F8"
+                },
+                "RETINITIS PIGMENTOSA 4_condition": {
+                    "name": "RETINITIS PIGMENTOSA 4",
+                    "color": "#FFA7BE"
+                },
+                "PHENYLKETONURIA_condition": {
+                    "name": "PHENYLKETONURIA",
+                    "color": "#F6E4E0"
+                },
+                "PELIZAEUS-MERZBACHER DISEASE_condition": {
+                    "name": "PELIZAEUS-MERZBACHER DISEASE",
+                    "color": "#BF906F"
+                },
+                "OSTEOGENESIS IMPERFECTA, TYPE I; OI1_condition": {
+                    "name": "OSTEOGENESIS IMPERFECTA, TYPE I; OI1",
+                    "color": "#D0ADA4"
+                },
+                "ORNITHINE TRANSCARBAMYLASE DEFICIENCY_condition": {
+                    "name": "ORNITHINE TRANSCARBAMYLASE DEFICIENCY",
+                    "color": "#F4FA7B"
+                },
+                "OPTIC ATROPHY 1_condition": {
+                    "name": "OPTIC ATROPHY 1",
+                    "color": "#9088FE"
+                },
+                "ALBINISM, OCULOCUTANEOUS, TYPE II; OCA2_condition": {
+                    "name": "ALBINISM, OCULOCUTANEOUS, TYPE II; OCA2",
+                    "color": "#C79BDC"
+                },
+                "ALBINISM, OCULOCUTANEOUS, TYPE IA; OCA1A_condition": {
+                    "name": "ALBINISM, OCULOCUTANEOUS, TYPE IA; OCA1A",
+                    "color": "#8AB1A4"
+                },
+                "NORRIE DISEASE_condition": {
+                    "name": "NORRIE DISEASE",
+                    "color": "#87ED6D"
+                },
+                "CEROID LIPOFUSCINOSIS, NEURONAL 2, LATE INFANTILE; CLN2_condition": {
+                    "name": "CEROID LIPOFUSCINOSIS, NEURONAL 2, LATE INFANTILE; CLN2",
+                    "color": "#9BE68B"
+                },
+                "COHEN SYNDROME_condition": {
+                    "name": "COHEN SYNDROME",
+                    "color": "#A787FA"
+                },
+                "AICARDI-GOUTIERES SYNDROME 2_condition": {
+                    "name": "AICARDI-GOUTIERES SYNDROME 2",
+                    "color": "#EAAB91"
+                },
+                "CARTILAGE-HAIR HYPOPLASIA_condition": {
+                    "name": "CARTILAGE-HAIR HYPOPLASIA",
+                    "color": "#BCC4BE"
+                },
+                "BARDET-BIEDL SYNDROME 10_condition": {
+                    "name": "BARDET-BIEDL SYNDROME 10",
+                    "color": "#DB97C3"
+                },
+                "RENAL TUBULAR ACIDOSIS, DISTAL, AUTOSOMAL RECESSIVE; RTADR_condition": {
+                    "name": "RENAL TUBULAR ACIDOSIS, DISTAL, AUTOSOMAL RECESSIVE; RTADR",
+                    "color": "#E2D5C8"
+                },
+                "ARTHROGRYPOSIS, RENAL DYSFUNCTION, AND CHOLESTASIS 1; ARCS1_condition": {
+                    "name": "ARTHROGRYPOSIS, RENAL DYSFUNCTION, AND CHOLESTASIS 1; ARCS1",
+                    "color": "#A49B92"
+                },
+                "MYASTHENIC SYNDROME, CONGENITAL, 4A, SLOW-CHANNEL; CMS4A_condition": {
+                    "name": "MYASTHENIC SYNDROME, CONGENITAL, 4A, SLOW-CHANNEL; CMS4A",
+                    "color": "#CCE174"
+                },
+                "LONG QT SYNDROME 2_condition": {
+                    "name": "LONG QT SYNDROME 2",
+                    "color": "#A0A29D"
+                },
+                "DYSKERATOSIS CONGENITA, AUTOSOMAL RECESSIVE, 5; DKCB5_condition": {
+                    "name": "DYSKERATOSIS CONGENITA, AUTOSOMAL RECESSIVE, 5; DKCB5",
+                    "color": "#B6FBBD"
+                },
+                "AXENFELD-RIEGER SYNDROME, TYPE 1; RIEG1_condition": {
+                    "name": "AXENFELD-RIEGER SYNDROME, TYPE 1; RIEG1",
+                    "color": "#EADAC5"
+                },
+                "ALLAN-HERNDON-DUDLEY SYNDROME_condition": {
+                    "name": "ALLAN-HERNDON-DUDLEY SYNDROME",
+                    "color": "#6E6C70"
+                },
+                "GLYCOGEN STORAGE DISEASE Ib_condition": {
+                    "name": "GLYCOGEN STORAGE DISEASE Ib",
+                    "color": "#9FFF65"
+                },
+                "DENTINOGENESIS IMPERFECTA, SHIELDS TYPE III_condition": {
+                    "name": "DENTINOGENESIS IMPERFECTA, SHIELDS TYPE III",
+                    "color": "#B6BCFC"
+                },
+                "HOLOPROSENCEPHALY 2_condition": {
+                    "name": "HOLOPROSENCEPHALY 2",
+                    "color": "#C79C70"
+                },
+                "THROMBOCYTHEMIA 1_condition": {
+                    "name": "THROMBOCYTHEMIA 1",
+                    "color": "#6FDBBD"
+                },
+                "HYPERTROPHIC NEUROPATHY OF DEJERINE-SOTTAS_condition": {
+                    "name": "HYPERTROPHIC NEUROPATHY OF DEJERINE-SOTTAS",
+                    "color": "#9F6D64"
+                },
+                "CREUTZFELDT-JAKOB DISEASE_condition": {
+                    "name": "CREUTZFELDT-JAKOB DISEASE",
+                    "color": "#75E792"
+                },
+                "SPINAL AND BULBAR MUSCULAR ATROPHY, X-LINKED 1; SMAX1  KENNEDY SPINAL AND BULBAR MUSCULAR ATROPHY_condition": {
+                    "name": "SPINAL AND BULBAR MUSCULAR ATROPHY, X-LINKED 1; SMAX1  KENNEDY SPINAL AND BULBAR MUSCULAR ATROPHY",
+                    "color": "#A66B91"
+                },
+                "NEUROPATHY, HEREDITARY SENSORY AND AUTONOMIC, TYPE VI; HSAN6_condition": {
+                    "name": "NEUROPATHY, HEREDITARY SENSORY AND AUTONOMIC, TYPE VI; HSAN6",
+                    "color": "#E387E6"
+                },
+                "CHARCOT-MARIE-TOOTH DISEASE, AXONAL, TYPE 2B; CMT2B_condition": {
+                    "name": "CHARCOT-MARIE-TOOTH DISEASE, AXONAL, TYPE 2B; CMT2B",
+                    "color": "#7AAF6D"
+                },
+                "CHARCOT-MARIE-TOOTH DISEASE, AXONAL, TYPE 2E; CMT2E_condition": {
+                    "name": "CHARCOT-MARIE-TOOTH DISEASE, AXONAL, TYPE 2E; CMT2E",
+                    "color": "#A883DF"
+                },
+                "CAMURATI-ENGELMANN DISEASE_condition": {
+                    "name": "CAMURATI-ENGELMANN DISEASE",
+                    "color": "#A2E8DB"
+                },
+                "ARTHROGRYPOSIS, DISTAL, TYPE 2B; DA2B_condition": {
+                    "name": "ARTHROGRYPOSIS, DISTAL, TYPE 2B; DA2B",
+                    "color": "#68758A"
+                },
+                "DIAMOND-BLACKFAN ANEMIA 9_condition": {
+                    "name": "DIAMOND-BLACKFAN ANEMIA 9",
+                    "color": "#89ACB6"
+                },
+                "BENIGN CHRONIC PEMPHIGUS_condition": {
+                    "name": "BENIGN CHRONIC PEMPHIGUS",
+                    "color": "#A38DAE"
+                },
+                "EPILEPSY, PYRIDOXINE-DEPENDENT; EPD_condition": {
+                    "name": "EPILEPSY, PYRIDOXINE-DEPENDENT; EPD",
+                    "color": "#766D6B"
+                },
+                "PEROXISOME BIOGENESIS DISORDER 3A (ZELLWEGER)_condition": {
+                    "name": "PEROXISOME BIOGENESIS DISORDER 3A (ZELLWEGER)",
+                    "color": "#E1ADA8"
+                },
+                "LEUKOCYTE ADHESION DEFICIENCY, TYPE I; LAD_condition": {
+                    "name": "LEUKOCYTE ADHESION DEFICIENCY, TYPE I; LAD",
+                    "color": "#BD82F0"
+                },
+                "METHYLMALONIC ACIDURIA, cblB TYPE_condition": {
+                    "name": "METHYLMALONIC ACIDURIA, cblB TYPE",
+                    "color": "#85C66B"
+                },
+                "MAPLE SYRUP URINE DISEASE_condition": {
+                    "name": "MAPLE SYRUP URINE DISEASE",
+                    "color": "#EDEF6C"
+                },
+                "CRANIOFRONTONASAL SYNDROME_condition": {
+                    "name": "CRANIOFRONTONASAL SYNDROME",
+                    "color": "#B2B4C4"
+                },
+                "LYMPHOPROLIFERATIVE SYNDROME, X-LINKED, 1; XLP1_condition": {
+                    "name": "LYMPHOPROLIFERATIVE SYNDROME, X-LINKED, 1; XLP1",
+                    "color": "#EAE7AF"
+                },
+                "THROMBOPHILIA DUE TO PROTEIN S DEFICIENCY, AUTOSOMAL DOMINANT; THPH5_condition": {
+                    "name": "THROMBOPHILIA DUE TO PROTEIN S DEFICIENCY, AUTOSOMAL DOMINANT; THPH5",
+                    "color": "#E4F4F2"
+                },
+                "DONNAI-BARROW SYNDROME_condition": {
+                    "name": "DONNAI-BARROW SYNDROME",
+                    "color": "#98A196"
+                },
+                "GREIG CEPHALOPOLYSYNDACTYLY SYNDROME_condition": {
+                    "name": "GREIG CEPHALOPOLYSYNDACTYLY SYNDROME",
+                    "color": "#D8B291"
+                },
+                "STARGARDT DISEASE 1_condition": {
+                    "name": "STARGARDT DISEASE 1",
+                    "color": "#8EBF67"
+                },
+                "CEREBRAL ARTERIOPATHY, AUTOSOMAL DOMINANT_condition": {
+                    "name": "CEREBRAL ARTERIOPATHY, AUTOSOMAL DOMINANT",
+                    "color": "#B6E26B"
+                },
+                "D-BIFUNCTIONAL PROTEIN DEFICIENCY_condition": {
+                    "name": "D-BIFUNCTIONAL PROTEIN DEFICIENCY",
+                    "color": "#68DD8D"
+                },
+                "TELANGIECTASIA, HEREDITARY HEMORRHAGIC, OF RENDU, OSLER, AND WEBER; HHT_condition": {
+                    "name": "TELANGIECTASIA, HEREDITARY HEMORRHAGIC, OF RENDU, OSLER, AND WEBER; HHT",
+                    "color": "#BFD6D1"
+                },
+                "LARSEN SYNDROME_condition": {
+                    "name": "LARSEN SYNDROME",
+                    "color": "#8DA87F"
+                },
+                "MUSCULAR DYSTROPHY-DYSTROGLYCANOPATHY (CONGENITAL WITH BRAIN AND EYE ANOMALIES), TYPE A, 4; MDDGA4_condition": {
+                    "name": "MUSCULAR DYSTROPHY-DYSTROGLYCANOPATHY (CONGENITAL WITH BRAIN AND EYE ANOMALIES), TYPE A, 4; MDDGA4",
+                    "color": "#D8BC6C"
+                },
+                "GLYCOGEN STORAGE DISEASE IXa1_condition": {
+                    "name": "GLYCOGEN STORAGE DISEASE IXa1",
+                    "color": "#9DEEE3"
+                },
+                "NEUTROPENIA, SEVERE CONGENITAL, 1, AUTOSOMAL DOMINANT; SCN1_condition": {
+                    "name": "NEUTROPENIA, SEVERE CONGENITAL, 1, AUTOSOMAL DOMINANT; SCN1",
+                    "color": "#7197C2"
+                },
+                "JOUBERT SYNDROME 1_condition": {
+                    "name": "JOUBERT SYNDROME 1",
+                    "color": "#90AC80"
+                },
+                "HOMOCYSTINURIA DUE TO CYSTATHIONINE BETA-SYNTHASE DEFICIENCY_condition": {
+                    "name": "HOMOCYSTINURIA DUE TO CYSTATHIONINE BETA-SYNTHASE DEFICIENCY",
+                    "color": "#69BDAF"
+                },
+                "CAMPOMELIC DYSPLASIA WITH AUTOSOMAL SEX REVERSAL_condition": {
+                    "name": "CAMPOMELIC DYSPLASIA WITH AUTOSOMAL SEX REVERSAL",
+                    "color": "#A6FE6B"
+                },
+                "NEMALINE MYOPATHY 2_condition": {
+                    "name": "NEMALINE MYOPATHY 2",
+                    "color": "#6769E1"
+                },
+                "DIAMOND-BLACKFAN ANEMIA 5_condition": {
+                    "name": "DIAMOND-BLACKFAN ANEMIA 5",
+                    "color": "#6BD864"
+                },
+                "POLYMICROGYRIA, BILATERAL FRONTOPARIETAL; BFPP_condition": {
+                    "name": "POLYMICROGYRIA, BILATERAL FRONTOPARIETAL; BFPP",
+                    "color": "#7ABD72"
+                },
+                "USHER SYNDROME, TYPE I; USH1_condition": {
+                    "name": "USHER SYNDROME, TYPE I; USH1",
+                    "color": "#75649B"
+                },
+                "VICI SYNDROME_condition": {
+                    "name": "VICI SYNDROME",
+                    "color": "#6FF291"
+                },
+                "MECKEL SYNDROME, TYPE 1; MKS1_condition": {
+                    "name": "MECKEL SYNDROME, TYPE 1; MKS1",
+                    "color": "#DC83A0"
+                },
+                "LISSENCEPHALY, X-LINKED, 2; LISX2LISSENCEPHALY, X-LINKED, 2; LISX2_condition": {
+                    "name": "LISSENCEPHALY, X-LINKED, 2; LISX2LISSENCEPHALY, X-LINKED, 2; LISX2",
+                    "color": "#AAAC82"
+                },
+                "RESTRICTIVE DERMOPATHY, LETHAL_condition": {
+                    "name": "RESTRICTIVE DERMOPATHY, LETHAL",
+                    "color": "#7991D8"
+                },
+                "MECKEL SYNDROME, TYPE 4; MKS4_condition": {
+                    "name": "MECKEL SYNDROME, TYPE 4; MKS4",
+                    "color": "#8BA7EE"
+                },
+                "LYMPHEDEMA-DISTICHIASIS SYNDROME_condition": {
+                    "name": "LYMPHEDEMA-DISTICHIASIS SYNDROME",
+                    "color": "#79B7F4"
+                },
+                "CITRULLINEMIA, CLASSIC_condition": {
+                    "name": "CITRULLINEMIA, CLASSIC",
+                    "color": "#7BADBF"
+                },
+                "ECTODERMAL DYSPLASIA, HYPOHIDROTIC, X-LINKED; XHED_condition": {
+                    "name": "ECTODERMAL DYSPLASIA, HYPOHIDROTIC, X-LINKED; XHED",
+                    "color": "#D1BDC4"
+                },
+                "ALZHEIMER DISEASE 3_condition": {
+                    "name": "ALZHEIMER DISEASE 3",
+                    "color": "#99CDAF"
+                },
+                "PSEUDOHYPOPARATHYROIDISM, TYPE IB; PHP1B_condition": {
+                    "name": "PSEUDOHYPOPARATHYROIDISM, TYPE IB; PHP1B",
+                    "color": "#66866D"
+                },
+                "MOSAIC VARIEGATED ANEUPLOIDY SYNDROME 1_condition": {
+                    "name": "MOSAIC VARIEGATED ANEUPLOIDY SYNDROME 1",
+                    "color": "#E0F16A"
+                },
+                "CARDIOMYOPATHY, DILATED, 1S; CMD1S_condition": {
+                    "name": "CARDIOMYOPATHY, DILATED, 1S; CMD1S",
+                    "color": "#F6BD7F"
+                },
+                "CARBAMOYL PHOSPHATE SYNTHETASE I DEFICIENCY CPS I DEFICIENCY_condition": {
+                    "name": "CARBAMOYL PHOSPHATE SYNTHETASE I DEFICIENCY CPS I DEFICIENCY",
+                    "color": "#EDFE6D"
+                },
+                "MYOTONIC DYSTROPHY 2_condition": {
+                    "name": "MYOTONIC DYSTROPHY 2",
+                    "color": "#CEF0A9"
+                },
+                "PORPHYRIA, CONGENITAL ERYTHROPOIETIC_condition": {
+                    "name": "PORPHYRIA, CONGENITAL ERYTHROPOIETIC",
+                    "color": "#B7BCC3"
+                },
+                "GLYCINE ENCEPHALOPATHY_condition": {
+                    "name": "GLYCINE ENCEPHALOPATHY",
+                    "color": "#7DCE98"
+                },
+                "PSEUDOVAGINAL PERINEOSCROTAL HYPOSPADIAS_condition": {
+                    "name": "PSEUDOVAGINAL PERINEOSCROTAL HYPOSPADIAS",
+                    "color": "#78EE6B"
+                },
+                "GRANULOMATOUS DISEASE, CHRONIC, AUTOSOMAL RECESSIVE, CYTOCHROME b-POSITIVE, TYPE II; CDG2_condition": {
+                    "name": "GRANULOMATOUS DISEASE, CHRONIC, AUTOSOMAL RECESSIVE, CYTOCHROME b-POSITIVE, TYPE II; CDG2",
+                    "color": "#91BBFA"
+                },
+                "COENZYME Q10 DEFICIENCY, PRIMARY, 1; COQ10D1_condition": {
+                    "name": "COENZYME Q10 DEFICIENCY, PRIMARY, 1; COQ10D1",
+                    "color": "#D57D66"
+                },
+                "ANGELMAN SYNDROME_condition": {
+                    "name": "ANGELMAN SYNDROME",
+                    "color": "#F4FED0"
+                },
+                "MICROCEPHALY 3, PRIMARY, AUTOSOMAL RECESSIVE; MCPH3_condition": {
+                    "name": "MICROCEPHALY 3, PRIMARY, AUTOSOMAL RECESSIVE; MCPH3",
+                    "color": "#B895F6"
+                },
+                "LERI-WEILL DYSCHONDROSTEOSIS_condition": {
+                    "name": "LERI-WEILL DYSCHONDROSTEOSIS",
+                    "color": "#9777C3"
+                },
+                "HEMOPHAGOCYTIC LYMPHOHISTIOCYTOSIS, FAMILIAL, 4; FHL4_condition": {
+                    "name": "HEMOPHAGOCYTIC LYMPHOHISTIOCYTOSIS, FAMILIAL, 4; FHL4",
+                    "color": "#7F75F8"
+                },
+                "RAS-ASSOCIATED AUTOIMMUNE LEUKOPROLIFERATIVE DISORDER_condition": {
+                    "name": "RAS-ASSOCIATED AUTOIMMUNE LEUKOPROLIFERATIVE DISORDER",
+                    "color": "#9CA596"
+                },
+                "MECKEL SYNDROME, TYPE 6; MKS6_condition": {
+                    "name": "MECKEL SYNDROME, TYPE 6; MKS6",
+                    "color": "#FDC3F5"
+                },
+                "CARNITINE PALMITOYLTRANSFERASE II DEFICIENCY, INFANTILE_condition": {
+                    "name": "CARNITINE PALMITOYLTRANSFERASE II DEFICIENCY, INFANTILE",
+                    "color": "#ACDA7C"
+                },
+                "EXOSTOSES, MULTIPLE, TYPE II_condition": {
+                    "name": "EXOSTOSES, MULTIPLE, TYPE II",
+                    "color": "#FD6BE7"
+                },
+                "HYPER-IgE RECURRENT INFECTION SYNDROME, AUTOSOMAL DOMINANT_condition": {
+                    "name": "HYPER-IgE RECURRENT INFECTION SYNDROME, AUTOSOMAL DOMINANT",
+                    "color": "#FABB88"
+                },
+                "JOUBERT SYNDROME 6_condition": {
+                    "name": "JOUBERT SYNDROME 6",
+                    "color": "#6FAB90"
+                },
+                "SEVERE COMBINED IMMUNODEFICIENCY, X-LINKED; SCIDX1_condition": {
+                    "name": "SEVERE COMBINED IMMUNODEFICIENCY, X-LINKED; SCIDX1",
+                    "color": "#F5656A"
+                },
+                "NEUROFIBROMATOSIS, TYPE II; NF2_condition": {
+                    "name": "NEUROFIBROMATOSIS, TYPE II; NF2",
+                    "color": "#8DA8D7"
+                },
+                "NEUROFIBROMATOSIS, TYPE I; NF1_condition": {
+                    "name": "NEUROFIBROMATOSIS, TYPE I; NF1",
+                    "color": "#A8E875"
+                },
+                "MYOPATHY, CENTRONUCLEAR, X-LINKED; CNMX_condition": {
+                    "name": "MYOPATHY, CENTRONUCLEAR, X-LINKED; CNMX",
+                    "color": "#C76DFA"
+                },
+                "MYOTONIC DYSTROPHY 1_condition": {
+                    "name": "MYOTONIC DYSTROPHY 1",
+                    "color": "#EF91EB"
+                },
+                "MUSCULAR DYSTROPHY, BECKER TYPE; BMD_condition": {
+                    "name": "MUSCULAR DYSTROPHY, BECKER TYPE; BMD",
+                    "color": "#91979B"
+                },
+                "MUSCULAR DYSTROPHY, DUCHENNE TYPE; DMD_condition": {
+                    "name": "MUSCULAR DYSTROPHY, DUCHENNE TYPE; DMD",
+                    "color": "#8CD1F4"
+                },
+                "EXOSTOSES, MULTIPLE, TYPE I_condition": {
+                    "name": "EXOSTOSES, MULTIPLE, TYPE I",
+                    "color": "#9CFCBD"
+                },
+                "METACHROMATIC LEUKODYSTROPHY_condition": {
+                    "name": "METACHROMATIC LEUKODYSTROPHY",
+                    "color": "#F1AE6E"
+                },
+                "MARFAN SYNDROME_condition": {
+                    "name": "MARFAN SYNDROME",
+                    "color": "#C0FDA5"
+                },
+                "OSTEOPETROSIS, AUTOSOMAL RECESSIVE 1; OPTB1_condition": {
+                    "name": "OSTEOPETROSIS, AUTOSOMAL RECESSIVE 1; OPTB1",
+                    "color": "#D1EFA4"
+                },
+                "HYDROXYACYL-CoA DEHYDROGENASE/3-KETOACYL-CoA THIOLASE/ENOYL-CoA HYDRATASE, ALPHA SUBUNIT; HADHA_condition": {
+                    "name": "HYDROXYACYL-CoA DEHYDROGENASE/3-KETOACYL-CoA THIOLASE/ENOYL-CoA HYDRATASE, ALPHA SUBUNIT; HADHA",
+                    "color": "#7FFADB"
+                },
+                "KRABBE DISEASE_condition": {
+                    "name": "KRABBE DISEASE",
+                    "color": "#FA7E8B"
+                },
+                "BLOOD GROUP--KELL-CELLANO SYSTEM_condition": {
+                    "name": "BLOOD GROUP--KELL-CELLANO SYSTEM",
+                    "color": "#D8C6D9"
+                },
+                "INCONTINENTIA PIGMENTI_condition": {
+                    "name": "INCONTINENTIA PIGMENTI",
+                    "color": "#CD71BE"
+                },
+                "HYPOPHOSPHATASIA, INFANTILE_condition": {
+                    "name": "HYPOPHOSPHATASIA, INFANTILE",
+                    "color": "#A6FF73"
+                },
+                "HURLER SYNDROME_condition": {
+                    "name": "HURLER SYNDROME",
+                    "color": "#8DDABF"
+                },
+                "HUNTINGTON DISEASE_condition": {
+                    "name": "HUNTINGTON DISEASE",
+                    "color": "#CFA77F"
+                },
+                "MUCOPOLYSACCHARIDOSIS, TYPE II; MPS2  mHUNTER-MCALPINE CRANIOSYNOSTOSIS SYNDROME_condition": {
+                    "name": "MUCOPOLYSACCHARIDOSIS, TYPE II; MPS2  mHUNTER-MCALPINE CRANIOSYNOSTOSIS SYNDROME",
+                    "color": "#FB8FA4"
+                },
+                "SONIC HEDGEHOG_condition": {
+                    "name": "SONIC HEDGEHOG",
+                    "color": "#BC90A6"
+                },
+                "HLA MATCHING GENOTYPING_condition": {
+                    "name": "HLA MATCHING GENOTYPING",
+                    "color": "#DF8566"
+                },
+                "HEMOPHILIA B_condition": {
+                    "name": "HEMOPHILIA B",
+                    "color": "#BF77DA"
+                },
+                "HEMOPHILIA A_condition": {
+                    "name": "HEMOPHILIA A",
+                    "color": "#E193D6"
+                },
+                "BASAL CELL NEVUS SYNDROME_condition": {
+                    "name": "BASAL CELL NEVUS SYNDROME",
+                    "color": "#A09CD2"
+                }
+            };
+
+            opts.phenotypes = [{'type':'achondrogenesis_phenotype', 'name':'Achondrogenesis'}, {'type':'acne_phenotype', 'name':'Acne inversa'},
+                                {'type':'cataract_phenotype','name':'Cataract'}, {'type':'dystonia_phenotype', 'name':'Dystonia'}];
+
+            opts.candidate_genotype = [{'type':'achondrogenesis_candidate', 'name':'Achondrogenesis'}, {'type':'acne_candidate', 'name':'Acne inversa'},
+                {'type':'cataract_candidate','name':'Cataract'}, {'type':'dystonia_candidate', 'name':'Dystonia'}];
+
+            opts.causal_genotype = [{'type':'achondrogenesis_causal', 'name':'Achondrogenesis'}, {'type':'acne_causal', 'name':'Acne inversa'},
+                {'type':'cataract_causal','name':'Cataract'}, {'type':'dystonia_causal', 'name':'Dystonia'}];
+
+            opts.carrier_genotype = [{'type':'achondrogenesis_carrier', 'name':'Achondrogenesis'}, {'type':'acne_carrier', 'name':'Acne inversa'},
+                {'type':'cataract_carrier','name':'Cataract'}, {'type':'dystonia_carrier', 'name':'Dystonia'}];
+
+            opts.cancers = [{'type':'head_cancer', 'name':'Head', 'colour':'#ff0040'}, {'type':'heart_cancer', 'name':'Heart', 'colour':'#b34d4d'},
+                {'type':'lymphoma_cancer', 'name':'Lymphoma', 'colour':'#9f6060'}, {'type':'pituitary_cancer', 'name':'Pituitary', 'colour':'#ffcccc'}];
+
+            opts.common_cancers = [{'type':'breast_cancer', 'name':'Breast', 'colour':'pink'}, {'type':'ovarian_cancer', 'name':'Ovarian', 'colour':'#4DAA4D'}, {'type':'colon_cancer', 'name':'Colon', 'colour':'#bfff00'},
+                {'type':'prostate_cancer', 'name':'Prostate', 'colour':'#D5494A'}, {'type':'pancreatic_cancer', 'name':'Pancreatic', 'colour':'#4289BA'}, {'type':'melanoma_cancer', 'name':'Melanoma', 'colour':'#80ff00'}, {'type':'kidney_cancer', 'name':'Kidney', 'colour':'#00ff80'},
+                {'type':'gastric_cancer', 'name':'Gastric', 'colour':'#00ffbf'}, {'type':'lung_cancer', 'name':'Lung', 'colour':'#00ffff'}, {'type':'brain_cancer', 'name':'Brain', 'colour':'#4d0000'}, {'type':'oesophagus_cancer', 'name':'Oesophagus', 'colour':'#00bfff'},
+                {'type':'thyroid_cancer', 'name':'Thyroid', 'colour':'#0080ff'}, {'type':'liver_cancer', 'name':'Liver', 'colour':'#8000ff'}, {'type':'cervix_cancer', 'name':'Cervix', 'colour':'#bf00ff'}, {'type':'myeloma_cancer', 'name':'Myeloma', 'colour':'#ff00ff'},
+                {'type':'leukemia_cancer', 'name':'Leukemia', 'colour':'#ff0080'}];
+
+            var conditions_list = [];
+            Object.keys(opts.conditions).forEach(function(key) {
+                conditions_list.push({'type':key, 'name':opts.conditions[key].name, 'colour':opts.conditions[key].color});
+            });
+            opts.diseases = conditions_list.concat(opts.common_cancers, opts.cancers);
+
+            opts.selected_phenotypes = {};
+            opts.selected_candidate_genotype = {};
+            opts.selected_causal_genotype = {};
+            opts.selected_carrier_genotype = {};
+            opts.selected_cancers = {};
+
+            // var local_dataset = pedcache.current(opts);
+            // if (local_dataset !== undefined && local_dataset !== null) {
+            //     opts.dataset = local_dataset;
+            // } else {
+            //     opts.dataset = dataset;
+            // }
+
+            localStorage.clear();
+            sessionStorage.clear();
+            opts.dataset = dataset;
+
+            window.opts = opts;
+
+            let all_cancers = opts.cancers.concat(opts.common_cancers);
+            $.each(all_cancers, function (index) {
+                for (var i = 0; i < opts.dataset.length; i++) {
+                    if (opts.dataset[i].hasOwnProperty(all_cancers[index].type)) {
+                        legend.addCancersToLegend(all_cancers[index].type);
+                    }
+                }
+            });
+
+            opts= ptree.build(opts);
+
+        });
+    </script>
+</head>
+
+<body>
+
+
+<div class="container">
+    <div id="pedigrees"></div>
+    <div id="node_properties"></div>
+</div>
+
+<script>
+    $(function () {
+        let pedigree = $('#pedigree');
+        let height = $(window).height();
+        pedigree.css({height:height});
+        pedigree.append(`
+		<Button id="dataButton" style="position: absolute; bottom: 90px; left: 10px">Data</Button> `);
+        pedigree.append(`
+		<div id="dataShower" style="position: fixed; display: none; right: 10px; bottom: 90px; height: ${height/2}px; width: 500px; background-color: white; overflow: auto">
+
+		</div>
+			`);
+        let dataShower = $('#dataShower');
+        $(document).on('click','#dataButton',function(e) {
+            var newdataset = ptree.copy_dataset(pedcache.current(window.opts));
+            if(!window.dataVisible){
+                dataShower.show();
+                window.dataVisible = true;
+                $('#dataShower').html(
+                    ` <pre style="text-align: left">
+                    ${(
+                        JSON.stringify(newdataset, undefined,2))}
+                    </pre>`)
+            }else{
+                window.dataVisible = false;
+                dataShower.hide();
+            }
+        });
+
+        $(window).on('ptree.rebuild', function (e) {
+            pedigree.append(`
+		<Button id="dataButton" style="position: absolute; bottom: 90px; left: 10px">Data</Button> `);
+            pedigree.append(`
+		<div id="dataShower" style="position: fixed; display: none; right: 10px; bottom: 50px; height: ${height/2}px; width: 500px; background-color: white; overflow: auto">
+
+		</div>
+			`);
+            $(document).on('click','#dataButton',function(e) {
+                var newdataset = ptree.copy_dataset(pedcache.current(window.opts));
+                if(!window.dataVisible){
+                    dataShower = $('#dataShower');
+                    dataShower.show();
+                    window.dataVisible = true;
+                    $('#dataShower').html(
+                        ` <pre style="text-align: left">
+                    ${(
+                            JSON.stringify(newdataset, undefined,2))}
+                    </pre>`)
+                }else{
+                    window.dataVisible = false;
+                    dataShower.hide();
+                }
+            });
+        })
+        $('.all-legend-container').css({position:'absolute'})
+    })
+</script>
+</body>
+
+</html>

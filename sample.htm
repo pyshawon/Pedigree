@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Misc notes
+    built in https://hub.docker.com/r/digitallyseamless/nodejs-bower-grunt/
+    using intructions from README https://github.com/CCGE-BOADICEA/pedigreejs
+    ->
+    <!-- pedigreejs dependencies from CDN -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>    
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+
+    <!-- also jqui but the docs don't say this -->
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
+    <!-- .. and a theme  -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
+    <!-- pedigreejs itself -->    
+    <script src="dist/js/pedigreejs.js"></script>
+    <link rel="stylesheet" href="dist/css/pedigreejs.min.css">
+      <script src="dist/js/obsarray.js"></script>
+
+    <!-- get the thing to run -->
+    <script type="text/javascript">
+      $(document).ready(function () {
+        var parent_width = $('#pedigrees').parent().width();
+        var margin = ($(window).width() - parent_width > 10 ? 100 : 30);
+        var svg_width = (parent_width > 750 ? (parent_width * 8 / 12 - margin) : parent_width - margin);
+        var dataset = [
+          {"name": "f11", "display_name": "Jane", "sex": "F", "status": 1, "top_level": true, "breast_cancer_diagnosis_age": 67, "ovarian_cancer_diagnosis_age": 63},
+          {"name": "m11", "sex": "M", "top_level": true},
+          {"name": "f12", "sex": "F", "top_level": true, "breast_cancer_diagnosis_age": 55, "display_name": "NOAFF"},
+          {"name": "m12", "sex": "M", "top_level": true},
+          {"name": "m21", "sex": "M", "mother": "f11", "father": "m11", "age": 56, affected_diagnosis_age: -1, "display_name": "AFF"},
+          {"name": "f21", "sex": "F", "mother": "f12", "father": "m12", "breast_cancer_diagnosis_age": 55, "breast_cancer2_diagnosis_age": 60, "ovarian_cancer_diagnosis_age": 58, "age": 63},
+          {"name": "ch1", "display_name": "Ana", "sex": "F", "mother": "f21", "father": "m21", "proband": true, "age": 25}
+        ];
+        //);            
+        var opts = {
+          'targetDiv': 'pedigrees', // ID of div to put the widget in
+          'btn_target': 'diabetes_history', // not sure what this does
+          'store_type': 'array', // use array not 'session' or 'local' - they use HTML5/DOM storage and the data persists over refreshs.
+          'width': svg_width,
+          'height': 500,
+          'symbol_size': 50,
+          'edit': true,
+          'diseases': [{'type': 'breast_cancer', 'colour': '#F68F35'},
+            {'type': 'breast_cancer2', 'colour': 'pink'},
+            /*{'type': 'ovarian_cancer', 'colour': '#4DAA4D'},
+            {'type': 'pancreatic_cancer', 'colour': '#4289BA'},
+            {'type': 'prostate_cancer', 'colour': '#D5494A'},*/
+            {'type': 'affected', 'colour': 'skyblue', datatype: "boolean"}
+          ],
+          validate: false,
+          'DEBUG': false,
+        };       
+        opts.dataset = dataset;
+        opts = ptree.build(opts);
+        $(document).on('ptree.rebuild', function(e, opts){
+          $("#data").text(JSON.stringify(pedcache.current(opts), null, 2));
+        });
+        $("#dump").on('click', function() {
+          $("#data").text(JSON.stringify(pedcache.current(opts), null, 2));
+        });
+      });
+    </script>
+    <style>
+      #pedigrees, #data {
+        float: left;
+      }
+    </style>
+  </head>
+  <body>
+    <label class="btn btn-default">
+      <input id="dump" type="button"/>Dump data
+    </label>
+    <div id="pedigrees"><!--placeholder for widget--></div>
+    <div id="node_properties"><!--placeholder for dialog--></div>
+    <pre id="data"><!--placeholder for data dump--></pre>
+  </body>
+</html>
